@@ -1,0 +1,45 @@
+cmake_minimum_required(VERSION 3.7)
+project(SymSeek)
+
+# TODO: Get rid of Qt dependency here with std::filesystem is working on all toolchains
+# This bug https://sourceforge.net/p/mingw-w64/bugs/737/ is not fixed
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(CMAKE_CXX_STANDARD 17)
+
+find_package(Qt5Core CONFIG REQUIRED)
+
+list(APPEND LIBSYMSEEK_SOURCEFILES
+        src/symseek.cpp
+        src/Debug.h
+        src/ImageParsers/IImageParser.h
+)
+
+if(WIN32)
+    list(APPEND LIBSYMSEEK_SOURCEFILES
+            src/ImageParsers/COFFNativeParser.h
+            src/ImageParsers/COFFNativeParser.cpp
+    )
+endif()
+
+if(UNIX AND NOT APPLE)
+    list(APPEND LIBSYMSEEK_SOURCEFILES
+            src/ImageParsers/ELFNativeParser.h
+            src/ImageParsers/ELFNativeParser.cpp
+    )
+endif()
+
+add_library(symseek ${LIBSYMSEEK_SOURCEFILES})
+target_include_directories(symseek PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(symseek Qt5::Core)
+
+if(WIN32)
+    target_link_libraries(symseek Dbghelp.lib)
+endif()
+
+install(TARGETS symseek
+        RUNTIME DESTINATION "bin"
+        LIBRARY DESTINATION "lib"
+        ARCHIVE DESTINATION "lib"
+        )
