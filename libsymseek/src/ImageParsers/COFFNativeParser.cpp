@@ -7,8 +7,7 @@
 #include <QtCore/QFile>
 #include <QtCore/QRegExp>
 
-#include <Debug.h>
-#include <winnt.h>
+#include "Debug.h"
 
 using namespace SymSeek;
 

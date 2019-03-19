@@ -2,6 +2,7 @@
 
 #include <functional>
 
+#include <QtCore/QObject>
 #include <QtCore/QString>
 #include <QtCore/QPair>
 #include <QtCore/QVector>
@@ -73,6 +74,25 @@ namespace SymSeek
         Symbols symbols;
     };
 
-    QVector<SymbolsInBinary> findSymbols(QString const & directoryPath, QStringList const & masks,
-            SymbolHandler handler = {});
+    class SymbolSeeker: public QObject
+    {
+        Q_OBJECT
+    public:
+        enum class ProgressStatus
+        {
+            Start,
+            Finish,
+            Reject,
+        };
+        Q_ENUM(ProgressStatus);
+
+    public Q_SLOTS:
+        QVector<SymbolsInBinary> findSymbols(QString const & directoryPath, QStringList const & masks,
+                SymbolHandler handler = {});
+
+    Q_SIGNALS:
+        void startProcessingItems(size_t count);
+        void itemStatus(QString binaryPath, SymSeek::SymbolSeeker::ProgressStatus status);
+        void itemsRemaining(size_t);
+    };
 }

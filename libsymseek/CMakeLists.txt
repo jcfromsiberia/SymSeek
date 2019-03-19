@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(Qt5Core CONFIG REQUIRED)
 
 list(APPEND LIBSYMSEEK_SOURCEFILES
+        include/symseek/symseek.h
         src/symseek.cpp
         src/Debug.h
         src/ImageParsers/IImageParser.h

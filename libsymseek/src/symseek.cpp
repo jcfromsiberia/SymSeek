@@ -5,6 +5,7 @@
 #include <QtCore/QDirIterator>
 #include <QtCore/QDebug>
 #include <src/ImageParsers/IImageParser.h>
+#include <include/symseek/symseek.h>
 
 
 #if defined(Q_OS_WIN)
@@ -34,12 +35,12 @@ namespace SymSeek
         return result;
     }
 
-    QVector<SymbolsInBinary> findSymbols(QString const &directoryPath,
+    QVector<SymbolsInBinary> SymbolSeeker::findSymbols(QString const &directoryPath,
             QStringList const &masks, SymbolHandler handler)
     {
         auto binaries = findFilesByMasks(directoryPath, masks);
 
-        IImageParser::UPtr parsers[] = {
+        static IImageParser::UPtr parsers[] = {
 #if defined(Q_OS_WIN)
             std::make_unique<COFFNativeParser>(),
 #elif defined(Q_OS_LINUX)
@@ -49,11 +50,15 @@ namespace SymSeek
         };
 
         QVector<SymbolsInBinary> result;
-        result.reserve(binaries.size());
+        auto itemsCount = size_t(binaries.size());
+        result.reserve(int(itemsCount));
+        Q_EMIT startProcessingItems(itemsCount);
 
         // Could be run in parallel
         for(auto const & binary: binaries)
         {
+            Q_EMIT itemStatus(binary, ProgressStatus::Start);
+            Q_EMIT itemsRemaining(itemsCount);
             ISymbolReader::UPtr reader;
             for(auto const & parser: parsers)
             {
@@ -64,11 +69,17 @@ namespace SymSeek
             if(reader)
             {
                 Symbols symbols;
-                symbols.reserve(reader->symbolsCount());
+                symbols.reserve(int(reader->symbolsCount()));
                 // Payload
                 reader->readInto(std::back_inserter(symbols), handler);
                 result.append({ binary, std::move(symbols) });
+                Q_EMIT itemStatus(binary, ProgressStatus::Finish);
             }
+            else
+            {
+                Q_EMIT itemStatus(binary, ProgressStatus::Reject);
+            }
+            Q_EMIT itemsRemaining(--itemsCount);
         }
 
         return result;
