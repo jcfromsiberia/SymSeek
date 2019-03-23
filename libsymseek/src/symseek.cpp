@@ -5,10 +5,8 @@
 #include <QtCore/QCoreApplication>   // for qApp->processEvents()
 #include <QtCore/QDirIterator>
 #include <QtCore/QDebug>
-#include <src/ImageParsers/IImageParser.h>
-#include <include/symseek/symseek.h>
 
-
+#include "ImageParsers/IImageParser.h"
 #if defined(Q_OS_WIN)
 #   include "ImageParsers/COFFNativeParser.h"
 #elif defined(Q_OS_LINUX)
