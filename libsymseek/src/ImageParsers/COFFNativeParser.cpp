@@ -67,7 +67,7 @@ static Symbol nameToSymbol(LPCCH mangledName, bool implements = true)
     result.implements = implements;
     result.mangledName = mangledNameStr;
     result.demangledName = demangledNameStr;
-    QString name = QString::fromLatin1(demandledSymbol).trimmed();
+    QString name = demangledNameStr.trimmed();
 
     if(!name.contains(' '))
     {
@@ -75,14 +75,16 @@ static Symbol nameToSymbol(LPCCH mangledName, bool implements = true)
         return result;
     }
 
-    if(name.endsWith(")const"))
+    static QRegExp const constRx{ "^.+\\W+(\\s*const)$" };
+    if(int index = constRx.indexIn(name); index > -1)
     {
         result.modifiers |= Symbol::IsConst;
-        name.chop(5);
+        result.type = NameType::Method;
+        name.chop(constRx.cap(1).length());
     }
 
     static QRegExp const accessModifierRx{ "^(public|protected|private):" };
-    if(int index = accessModifierRx.indexIn(name); index > -1)
+    if(accessModifierRx.indexIn(name) > -1)
     {
         result.type = NameType::Method;
         QString const accessStr = accessModifierRx.cap(1);
@@ -99,9 +101,8 @@ static Symbol nameToSymbol(LPCCH mangledName, bool implements = true)
     }
 
     static QRegExp const modifierRx{ "^(virtual|static)" };
-    if(int index = modifierRx.indexIn(name); index > -1)
+    if(result.type == NameType::Method && modifierRx.indexIn(name) > -1)
     {
-        Q_ASSERT(result.type == NameType::Method);
         QString const modifier = modifierRx.cap(1);
         if(modifier == "static")
             result.modifiers |= Symbol::IsStatic;
