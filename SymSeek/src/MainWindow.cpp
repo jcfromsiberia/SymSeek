@@ -138,7 +138,7 @@ void MainWindow::doSearch()
         flashWidget(m_ui->leDirectory);
         return;
     }
-    if(!m_ui->leSymbolName->text().isEmpty() && m_ui->leSymbolName->hasAcceptableInput())
+    if(!m_ui->leSymbolName->hasAcceptableInput())
     {
         flashWidget(m_ui->leSymbolName);
         return;
