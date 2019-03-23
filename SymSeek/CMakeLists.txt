@@ -8,6 +8,8 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 find_package(Qt5Widgets CONFIG REQUIRED)
 
 list(APPEND SYMSEEK_SOURCEFILES
+        src/Debug.h
+
         src/MainWindow.h
         src/MainWindow.cpp
         src/mainwindow.ui

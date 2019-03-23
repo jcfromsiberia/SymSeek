@@ -4,6 +4,7 @@
 
 #include <QtCore/QPointer>
 #include <QtCore/QThread>
+#include <QtGui/QValidator>
 #include <QtWidgets/QMainWindow>
 
 #include <symseek/symseek.h>
@@ -48,11 +49,14 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget * parent = nullptr);
 
-    void doSearch();
-
     ~MainWindow();
+
+private:
+    void doSearch();
 
 private:
     std::unique_ptr<Ui::MainWindow> m_ui;
     SymbolsModel m_model;
+    QPointer<QValidator> m_directoryValidator;
+    QPointer<QValidator> m_regexValidator;
 };

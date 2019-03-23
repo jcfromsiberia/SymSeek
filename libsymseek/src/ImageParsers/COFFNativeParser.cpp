@@ -7,6 +7,10 @@
 #include <QtCore/QFile>
 #include <QtCore/QRegExp>
 
+#if defined(__MINGW32__)
+#   include <cxxabi.h>
+#endif
+
 #include "Debug.h"
 
 using namespace SymSeek;
@@ -44,11 +48,25 @@ static Symbol nameToSymbol(LPCCH mangledName, bool implements = true)
     // see e.g https://github.com/lucasg/Dependencies/issues/32
     ::UnDecorateSymbolName(mangledName, demandledSymbol, sizeof(demandledSymbol),
                            UNDNAME_COMPLETE | UNDNAME_NO_MS_KEYWORDS | UNDNAME_NO_LEADING_UNDERSCORES);
+    QString mangledNameStr = QString::fromLatin1(mangledName);
+    QString demangledNameStr = QString::fromLatin1(demandledSymbol);
+#if defined(__MINGW32__)
+    if(demangledNameStr == mangledNameStr && mangledNameStr.startsWith("_Z"))  // It's likely to be GCC mangling
+    {
+        int status{};
+        char * realName = ::abi::__cxa_demangle(mangledName, /*output_buffer=*/nullptr, /*length*/nullptr, &status);
+        if(!status)
+        {
+            demangledNameStr = QString::fromLatin1(realName);
+            ::free(realName);
+        }
+    }
+#endif
 
     Symbol result;
     result.implements = implements;
-    result.mangledName = QString::fromLatin1(mangledName);
-    result.demangledName = QString::fromLatin1(demandledSymbol);
+    result.mangledName = mangledNameStr;
+    result.demangledName = demangledNameStr;
     QString name = QString::fromLatin1(demandledSymbol).trimmed();
 
     if(!name.contains(' '))

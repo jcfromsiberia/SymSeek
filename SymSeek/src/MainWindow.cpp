@@ -2,11 +2,35 @@
 
 #include "ui_mainwindow.h"
 
+#include <QtCore/QDir>
 #include <QtCore/QEventLoop>
-#include <QtCore/QMetaObject>
-#include <QtGui/QRegExpValidator>
+#include <QtCore/QTimer>
+#include <QtGui/QValidator>
+#include <QtWidgets/QFileDialog>
 
 #include <symseek/symseek.h>
+
+#include "Debug.h"
+
+class CallbackValidator: public QValidator
+{
+public:
+    using Callback = std::function<bool(QString const &)>;
+
+    CallbackValidator(Callback callback, QObject * parent = nullptr)
+    : QValidator(parent)
+    , m_callback(GUARD(callback))
+    {
+    }
+
+    State validate(QString & input, int & pos) const override
+    {
+        return m_callback(input) ? QValidator::Acceptable : QValidator::Intermediate;
+    }
+
+private:
+    Callback m_callback;
+};
 
 AsyncSeeker::AsyncSeeker(QString const & directory, QStringList const & masks,
                          SymSeek::SymbolHandler handler, QObject * parent)
@@ -44,34 +68,98 @@ MainWindow::MainWindow(QWidget *parent)
 {
     m_ui->setupUi(this);
 
+    // Validators setup
+    m_directoryValidator = new CallbackValidator{
+            [](QString const & path) {
+                return !path.isEmpty() && QDir{ path }.exists();
+            }, this };
+    m_regexValidator = new CallbackValidator{
+            [](QString const & pattern) {
+                return QRegExp{ pattern }.isValid();
+            }
+    };
+    m_ui->leDirectory->setValidator(m_directoryValidator);
+
     // Connections
-    QObject::connect(m_ui->pbSearch, &QPushButton::clicked, this, &MainWindow::doSearch);
+    connect(m_ui->pbSearch, &QPushButton::clicked, this, &MainWindow::doSearch);
+    connect(m_ui->pbChooseDir, &QPushButton::clicked, [this]() {
+        QFileDialog dialog;
+        dialog.setDirectory(QDir::currentPath()); // TODO use QSettings to persist the chosen dir
+        dialog.setWindowTitle("Open Directory");
+        dialog.setFileMode(QFileDialog::DirectoryOnly);
+        dialog.setOption(QFileDialog::DontUseNativeDialog, true);
+        dialog.setOption(QFileDialog::ShowDirsOnly, false);
+        dialog.exec();
+
+        QDir dir = dialog.directory();
+        if(dir.exists())
+            m_ui->leDirectory->setText(dir.path());
+    });
+    connect(m_ui->chbRegex, &QCheckBox::stateChanged, [this](int state) {
+        m_ui->leSymbolName->setValidator(state == Qt::Checked ? m_regexValidator : nullptr);
+    });
+
     m_ui->tvResults->setModel(&m_model);
+
+    // UI setup
     auto hdr = m_ui->tvResults->horizontalHeader();
     hdr->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     hdr->setSectionResizeMode(1, QHeaderView::ResizeToContents);
     hdr->setSectionResizeMode(2, QHeaderView::ResizeToContents);
     hdr->setSectionResizeMode(3, QHeaderView::ResizeToContents);
     hdr->setSectionResizeMode(4, QHeaderView::Stretch);
+
+    m_ui->leGlobs->setText(
+        // TODO Get these globs from the available image parsers
+#if defined(Q_OS_WIN)
+        "*.dll;*.exe"    // TODO Add static libs support (*.lib for MSVS linker) and *.a for GNU ld
+#elif defined(Q_OS_LINUX)
+        "*.so"
+#endif
+    );
+    m_ui->pbProgress->hide();
+}
+
+static void flashWidget(QWidget * widget)
+{
+    QString styleSheet = GUARD(widget)->styleSheet();
+    widget->setStyleSheet("border: 2px solid red;");
+    widget->repaint();
+    QTimer::singleShot(500, [styleSheet, widget]() {
+        widget->setStyleSheet(styleSheet);
+        widget->repaint();
+    });
 }
 
 void MainWindow::doSearch()
 {
-    auto directory  = m_ui->leDirectory->text();
-    auto symbolName = m_ui->leSymbolName->text();
-    m_ui->pbSearch->setEnabled(false);
+    if(!m_ui->leDirectory->hasAcceptableInput())
+    {
+        flashWidget(m_ui->leDirectory);
+        return;
+    }
+    if(!m_ui->leSymbolName->text().isEmpty() && m_ui->leSymbolName->hasAcceptableInput())
+    {
+        flashWidget(m_ui->leSymbolName);
+        return;
+    }
+    auto const directory = m_ui->leDirectory->text();
+    auto const globs = m_ui->leGlobs->text();
+    auto const symbolName = m_ui->leSymbolName->text();
+    auto const isRegex = m_ui->chbRegex->isChecked();
 
     using namespace SymSeek;
 
-    QStringList masks =
+    QStringList const masks = globs.split(
 #if defined(Q_OS_WIN)
-        {"*.dll", "*.exe"}
-#elif defined(Q_OS_LINUX)
-        {"*.so"}
+        ';'
+#else
+        ':'
 #endif
-        ;
+    );
 
-    AsyncSeeker asyncSeeker{ directory, masks, [symbolName](Symbol const & symbol) {
+    AsyncSeeker asyncSeeker{ directory, masks, [symbolName, isRegex](Symbol const & symbol) {
+
         return symbol.demangledName.contains(symbolName)
                ? SymbolHandlerAction::Add
                : SymbolHandlerAction::Skip;
@@ -83,13 +171,10 @@ void MainWindow::doSearch()
     qRegisterMetaType<size_t>("size_t");
     qRegisterMetaType<SymbolSeeker::ProgressStatus>("SymSeek::SymbolSeeker::ProgressStatus");
 
-    connect(seeker, &SymbolSeeker::startProcessingItems, /*context=*/this,
-            [this](size_t itemsCount)  {
-            //TODO Setup QProgressBar
-        });
+    connect(seeker, &SymbolSeeker::startProcessingItems, m_ui->pbProgress, &QProgressBar::setMaximum);
     connect(seeker, &SymbolSeeker::itemsRemaining, /*context=*/this,
             [this](size_t itemsCount) {
-            //TODO Setup QProgressBar
+                m_ui->pbProgress->setValue(int(m_ui->pbProgress->maximum() - itemsCount));
         });
 
     connect(seeker, &SymbolSeeker::itemStatus, /*context=*/this,
@@ -109,16 +194,33 @@ void MainWindow::doSearch()
             };
             statusBar()->showMessage(statusText);
         });
+    bool interrupted = false;
+    connect(seeker, &SymbolSeeker::interrupted, /*context=*/this,
+            [&interrupted]()
+            {
+                interrupted = true;
+            });
+
+    auto searchBtn = m_ui->pbSearch;
+    QString buttonText = searchBtn->text();
+    searchBtn->setText("Stop");
+    disconnect(searchBtn, &QPushButton::clicked, this, &MainWindow::doSearch);
+    connect(searchBtn, &QPushButton::clicked, seeker, &SymbolSeeker::interrupt);
 
     QEventLoop loop;
     connect(&asyncSeeker, &AsyncSeeker::finished, &loop, &QEventLoop::quit);
     asyncSeeker.start();
+    m_ui->pbProgress->show();
     loop.exec();
 
-    statusBar()->showMessage("Finished", 3000);
+    QString finishedMessage = "Finished";
+    if(interrupted) finishedMessage = "Interrupted";
+    statusBar()->showMessage(finishedMessage, 3000);
     m_model.setSymbols(asyncSeeker.result());
-    m_ui->pbSearch->setEnabled(true);
 
+    connect(searchBtn, &QPushButton::clicked, this, &MainWindow::doSearch);
+    searchBtn->setText(buttonText);
+    m_ui->pbProgress->hide();
 }
 
 MainWindow::~MainWindow()

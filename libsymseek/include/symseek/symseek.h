@@ -90,9 +90,15 @@ namespace SymSeek
         QVector<SymbolsInBinary> findSymbols(QString const & directoryPath, QStringList const & masks,
                 SymbolHandler handler = {});
 
+        void interrupt();
+
     Q_SIGNALS:
         void startProcessingItems(size_t count);
         void itemStatus(QString binaryPath, SymSeek::SymbolSeeker::ProgressStatus status);
         void itemsRemaining(size_t);
+        void interrupted();
+
+    private:
+        bool m_interruptFlag = false;
     };
 }

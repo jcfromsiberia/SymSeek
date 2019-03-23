@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>SymSeek</string>
   </property>
   <property name="locale">
    <locale language="English" country="UnitedStates"/>
@@ -20,37 +20,7 @@
    <layout class="QGridLayout" name="gridLayout_2">
     <item row="0" column="0">
      <layout class="QGridLayout" name="gridLayout">
-      <item row="0" column="0">
-       <widget class="QLabel" name="lblGlobs">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string>Directory</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QLineEdit" name="leDirectory"/>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="lblSymbol">
-        <property name="text">
-         <string>Symbol name</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="lblExtensions">
-        <property name="text">
-         <string>Globs</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="2">
+      <item row="0" column="3">
        <spacer name="horizontalSpacer">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -66,16 +36,27 @@
         </property>
        </spacer>
       </item>
-      <item row="3" column="0" colspan="4">
-       <widget class="QTableView" name="tvResults"/>
+      <item row="1" column="0">
+       <widget class="QLabel" name="lblExtensions">
+        <property name="text">
+         <string>Globs</string>
+        </property>
+       </widget>
       </item>
-      <item row="1" column="1">
-       <widget class="QLineEdit" name="leGlobs"/>
+      <item row="0" column="0">
+       <widget class="QLabel" name="lblGlobs">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="text">
+         <string>Directory</string>
+        </property>
+       </widget>
       </item>
-      <item row="2" column="1">
-       <widget class="QLineEdit" name="leSymbolName"/>
-      </item>
-      <item row="0" column="3" rowspan="3">
+      <item row="0" column="4" rowspan="3">
        <widget class="QPushButton" name="pbSearch">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
@@ -85,6 +66,46 @@
         </property>
         <property name="text">
          <string>Search</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="lblSymbol">
+        <property name="text">
+         <string>Symbol name</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="5">
+       <widget class="QTableView" name="tvResults"/>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="leDirectory"/>
+      </item>
+      <item row="0" column="2">
+       <widget class="QPushButton" name="pbChooseDir">
+        <property name="text">
+         <string>Choose...</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1" colspan="2">
+       <widget class="QLineEdit" name="leGlobs"/>
+      </item>
+      <item row="2" column="1">
+       <widget class="QLineEdit" name="leSymbolName"/>
+      </item>
+      <item row="2" column="2">
+       <widget class="QCheckBox" name="chbRegex">
+        <property name="text">
+         <string>Regex</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="3">
+       <widget class="QProgressBar" name="pbProgress">
+        <property name="value">
+         <number>0</number>
         </property>
        </widget>
       </item>
