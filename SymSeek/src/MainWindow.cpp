@@ -158,9 +158,9 @@ void MainWindow::doSearch()
 #endif
     );
 
-    AsyncSeeker asyncSeeker{ directory, masks, [symbolName, isRegex](Symbol const & symbol) {
-
-        return symbol.demangledName.contains(symbolName)
+    QRegExp symbolRx{ symbolName };
+    AsyncSeeker asyncSeeker{ directory, masks, [symbolName, isRegex, &symbolRx](Symbol const & symbol) {
+        return (isRegex ? symbolRx.indexIn(symbol.demangledName) > -1 : symbol.demangledName.contains(symbolName))
                ? SymbolHandlerAction::Add
                : SymbolHandlerAction::Skip;
     } };
