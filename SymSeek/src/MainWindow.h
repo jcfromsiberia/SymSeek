@@ -3,6 +3,8 @@
 #include <memory>
 
 #include <QtCore/QPointer>
+#include <QtCore/QSettings>
+#include <QtCore/QSortFilterProxyModel>
 #include <QtCore/QThread>
 #include <QtGui/QValidator>
 #include <QtWidgets/QMainWindow>
@@ -54,9 +56,16 @@ public:
 private:
     void doSearch();
 
+    void loadSettings();
+    void storeSettings() const;
+
 private:
     std::unique_ptr<Ui::MainWindow> m_ui;
     SymbolsModel m_model;
+    QSortFilterProxyModel m_proxyModel;
+    QSettings mutable m_settings;
+
     QPointer<QValidator> m_directoryValidator;
     QPointer<QValidator> m_regexValidator;
+
 };

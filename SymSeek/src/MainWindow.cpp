@@ -65,8 +65,16 @@ QVector<SymSeek::SymbolsInBinary> AsyncSeeker::result() const
 MainWindow::MainWindow(QWidget *parent)
 : QMainWindow(parent)
 , m_ui(std::make_unique<Ui::MainWindow>())
+, m_model{ this }
+, m_proxyModel{ this }
 {
     m_ui->setupUi(this);
+
+    // Models setup
+    m_proxyModel.setSourceModel(&m_model);
+    m_ui->tvResults->setModel(&m_proxyModel);
+    m_ui->tvResults->horizontalHeader()->setSortIndicator(-1, Qt::AscendingOrder);
+    m_ui->tvResults->setSortingEnabled(true);
 
     // Validators setup
     m_directoryValidator = new CallbackValidator{
@@ -80,16 +88,33 @@ MainWindow::MainWindow(QWidget *parent)
     };
     m_ui->leDirectory->setValidator(m_directoryValidator);
 
+    // UI setup
+    loadSettings();
+    auto hdr = m_ui->tvResults->horizontalHeader();
+    hdr->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    hdr->setSectionResizeMode(1, QHeaderView::ResizeToContents);
+    hdr->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    hdr->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+    hdr->setSectionResizeMode(4, QHeaderView::Stretch);
+
+    m_ui->pbProgress->hide();
+
     // Connections
     connect(m_ui->pbSearch, &QPushButton::clicked, this, &MainWindow::doSearch);
     connect(m_ui->pbChooseDir, &QPushButton::clicked, [this]() {
+
+        QString currentPath = m_ui->leDirectory->text();
+        if(!QDir{currentPath }.exists())
+            currentPath = QDir::currentPath();
+
         QFileDialog dialog;
-        dialog.setDirectory(QDir::currentPath()); // TODO use QSettings to persist the chosen dir
+        dialog.setDirectory(currentPath);
         dialog.setWindowTitle("Open Directory");
         dialog.setFileMode(QFileDialog::DirectoryOnly);
         dialog.setOption(QFileDialog::DontUseNativeDialog, true);
         dialog.setOption(QFileDialog::ShowDirsOnly, false);
-        dialog.exec();
+        if(dialog.exec() == QDialog::Rejected)
+            return;
 
         QDir dir = dialog.directory();
         if(dir.exists())
@@ -98,26 +123,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_ui->chbRegex, &QCheckBox::stateChanged, [this](int state) {
         m_ui->leSymbolName->setValidator(state == Qt::Checked ? m_regexValidator : nullptr);
     });
-
-    m_ui->tvResults->setModel(&m_model);
-
-    // UI setup
-    auto hdr = m_ui->tvResults->horizontalHeader();
-    hdr->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    hdr->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-    hdr->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    hdr->setSectionResizeMode(3, QHeaderView::ResizeToContents);
-    hdr->setSectionResizeMode(4, QHeaderView::Stretch);
-
-    m_ui->leGlobs->setText(
-        // TODO Get these globs from the available image parsers
-#if defined(Q_OS_WIN)
-        "*.dll;*.exe"    // TODO Add static libs support (*.lib for MSVS linker) and *.a for GNU ld
-#elif defined(Q_OS_LINUX)
-        "*.so"
-#endif
-    );
-    m_ui->pbProgress->hide();
 }
 
 static void flashWidget(QWidget * widget)
@@ -225,4 +230,49 @@ void MainWindow::doSearch()
 
 MainWindow::~MainWindow()
 {
+    storeSettings();
+}
+
+namespace
+{
+    // Names for settings
+    QString const guiGroup          = QStringLiteral("gui");
+    QString const geometrySetting   = QStringLiteral("windowGeometry");
+    QString const directorySetting  = QStringLiteral("directory");
+    QString const globsSetting      = QStringLiteral("globs");
+    QString const symbolNameSetting = QStringLiteral("symbolName");
+}
+
+void MainWindow::loadSettings()
+{
+    m_settings.beginGroup(guiGroup);
+    if(QByteArray const geometry = m_settings.value(geometrySetting).toByteArray(); !geometry.isEmpty())
+        restoreGeometry(geometry);
+
+    m_ui->leDirectory->setText(m_settings.value(directorySetting).toString());
+    m_ui->leGlobs->setText(m_settings.value(globsSetting,
+            QString{
+// TODO Get these globs from the available image parsers
+#if defined(Q_OS_WIN)
+// TODO Add static libs support (*.lib for MSVS linker) and *.a for GNU ld
+                      "*.dll;*.exe"
+#elif defined(Q_OS_LINUX)
+                      "*"
+#endif
+            }
+    ).toString());
+    m_ui->leSymbolName->setText(m_settings.value(symbolNameSetting).toString());
+    m_settings.endGroup();
+}
+
+void MainWindow::storeSettings() const
+{
+    m_settings.beginGroup(guiGroup);
+
+    m_settings.setValue(geometrySetting, saveGeometry());
+    m_settings.setValue(directorySetting, m_ui->leDirectory->text());
+    m_settings.setValue(globsSetting, m_ui->leGlobs->text());
+    m_settings.setValue(symbolNameSetting, m_ui->leSymbolName->text());
+
+    m_settings.endGroup();
 }
