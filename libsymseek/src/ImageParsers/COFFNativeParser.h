@@ -27,6 +27,6 @@ namespace SymSeek
         ~COFFNativeSymbolReader();
     private:
         QByteArray m_moduleByteArray;
-        std::unique_ptr<class COFFNativeSymbolReaderPrivate> m_priv;
+        std::unique_ptr<struct COFFNativeSymbolReaderPrivate> m_priv;
     };
 }

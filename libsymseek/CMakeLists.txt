@@ -36,7 +36,16 @@ target_include_directories(symseek PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${
 target_link_libraries(symseek Qt5::Core)
 
 if(WIN32)
-    target_link_libraries(symseek Dbghelp.lib)
+    find_library(DBGHELP_LIB NAMES Dbghelp)
+    if(DBGHELP_LIB)
+        target_link_libraries(symseek ${DBGHELP_LIB})
+        target_compile_definitions(symseek PRIVATE DBGHELP_FOUND)
+    endif()
+    find_library(PSAPI_LIB NAMES psapi)
+    if(PSAPI_LIB)
+        target_link_libraries(symseek ${PSAPI_LIB})
+        target_compile_definitions(symseek PRIVATE PSAPI_FOUND)
+    endif()
 endif()
 
 install(TARGETS symseek
