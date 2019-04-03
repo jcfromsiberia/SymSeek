@@ -21,17 +21,4 @@ namespace SymSeek
     public:
         ISymbolReader::UPtr reader(QString imagePath) const override;
     };
-
-    class PENativeSymbolReader: public ISymbolReader
-    {
-    public:
-        PENativeSymbolReader(QByteArray moduleBytes);
-
-        size_t symbolsCount() const override;
-        void readInto(SymbolsInserter outputIter, SymbolHandler handler) const override;
-        ~PENativeSymbolReader();
-    private:
-        QByteArray m_moduleByteArray;
-        std::unique_ptr<struct PENativeSymbolReaderPrivate> m_priv;
-    };
 }

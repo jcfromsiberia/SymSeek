@@ -126,13 +126,12 @@ static QString demangleName(LPCCH mangledName)
 
 namespace SymSeek::detail
 {
-    Symbol nameToSymbol(LPCCH mangledName, bool implements)
+    Symbol nameToSymbol(LPCCH mangledName)
     {
         QString mangledNameStr = QString::fromLatin1(mangledName);
         QString demangledNameStr = demangleName(mangledName);
 
         Symbol result;
-        result.implements = implements;
         result.mangledName = mangledNameStr;
         result.demangledName = demangledNameStr;
 
