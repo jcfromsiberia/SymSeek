@@ -23,21 +23,11 @@ namespace SymSeek
         Variable
     };
 
-    enum class Convention
-    {
-        Cdecl,
-        Stdcall,
-        Pascal,
-        Fastcall,    //For MSVC only
-        Vectorcall,  //For MSVC only
-    };
-
     // TODO Squeeze this struct
     struct Symbol
     {
         NameType type = NameType::Function;
         Access access = Access::Public;  // When type == Method
-        Convention convention = Convention::Cdecl;
         enum Modifiers
         {
             None       = 0b0000,

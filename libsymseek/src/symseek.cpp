@@ -8,9 +8,10 @@
 
 #include "ImageParsers/IImageParser.h"
 #if defined(Q_OS_WIN)
-#   include "ImageParsers/COFFNativeParser.h"
+#   include "src/ImageParsers/windows/LIBNativeParser.h"
+#   include "src/ImageParsers/windows/PENativeParser.h"
 #elif defined(Q_OS_LINUX)
-#   include "ImageParsers/ELFNativeParser.h"
+#   include "ImageParsers/linux/ELFNativeParser.h"
 #endif
 
 using namespace SymSeek;
@@ -41,11 +42,11 @@ QVector<SymbolsInBinary> SymbolSeeker::findSymbols(QString const &directoryPath,
 
     static IImageParser::UPtr parsers[] = {
 #if defined(Q_OS_WIN)
-        std::make_unique<COFFNativeParser>(),
+        std::make_unique<LIBNativeParser>(),
+        std::make_unique<PENativeParser>(),
 #elif defined(Q_OS_LINUX)
         std::make_unique<ELFNativeParser>(),
 #endif
-        {} // Sentinel to prevent worrying about the ending commas
     };
 
     QVector<SymbolsInBinary> result;
@@ -68,8 +69,8 @@ QVector<SymbolsInBinary> SymbolSeeker::findSymbols(QString const &directoryPath,
         ISymbolReader::UPtr reader;
         for(auto const & parser: parsers)
         {
-            if(!parser)
-                continue;
+            if(reader)
+                break;
             reader = parser->reader(binary);
         }
         if(reader)

@@ -19,15 +19,19 @@ list(APPEND LIBSYMSEEK_SOURCEFILES
 
 if(WIN32)
     list(APPEND LIBSYMSEEK_SOURCEFILES
-            src/ImageParsers/COFFNativeParser.h
-            src/ImageParsers/COFFNativeParser.cpp
+            src/ImageParsers/windows/PENativeParser.h
+            src/ImageParsers/windows/PENativeParser.cpp
+            src/ImageParsers/windows/LIBNativeParser.h
+            src/ImageParsers/windows/LIBNativeParser.cpp
+            src/ImageParsers/windows/WinHelpers.h
+            src/ImageParsers/windows/WinHelpers.cpp
     )
 endif()
 
 if(UNIX AND NOT APPLE)
     list(APPEND LIBSYMSEEK_SOURCEFILES
-            src/ImageParsers/ELFNativeParser.h
-            src/ImageParsers/ELFNativeParser.cpp
+            src/ImageParsers/linux/ELFNativeParser.h
+            src/ImageParsers/linux/ELFNativeParser.cpp
     )
 endif()
 
