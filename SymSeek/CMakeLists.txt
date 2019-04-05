@@ -10,6 +10,10 @@ find_package(Qt5Widgets CONFIG REQUIRED)
 list(APPEND SYMSEEK_SOURCEFILES
         src/Debug.h
 
+        src/Workspace.h
+        src/Workspace.cpp
+        src/workspace.ui
+
         src/MainWindow.h
         src/MainWindow.cpp
         src/mainwindow.ui
