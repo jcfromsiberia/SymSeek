@@ -253,8 +253,7 @@ void Workspace::loadSettings(uint index)
             QString{
 // TODO Get these globs from the available image parsers
 #if defined(Q_OS_WIN)
-// TODO Add static libs support (*.lib for MSVS linker) and *.a for GNU ld
-                  "*.dll;*.exe;*.lib"
+                  "*.dll;*.exe;*.lib;*.a"
 #elif defined(Q_OS_LINUX)
                   "*"
 #endif
