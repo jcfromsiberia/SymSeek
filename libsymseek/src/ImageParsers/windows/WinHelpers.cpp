@@ -16,6 +16,8 @@
 #   include <cxxabi.h>
 #endif
 
+#include <QtCore/QRegularExpression>
+
 static QString demangleName(LPCCH mangledName)
 {
     // Undocumented crap. The only doc I found is https://source.winehq.org/WineAPI/__unDNameEx.html
@@ -142,18 +144,18 @@ namespace SymSeek::detail
         }
         QString name = demangledNameStr.trimmed();
 
-        static QRegExp const constRx{ R"(^.+\W+\s*const\s*(&|&&)?$)" };
-        if(int index = constRx.indexIn(name); index > -1)
+        static QRegularExpression const constRx{ R"(^.+\W+\s*const\s*(&|&&)?$)" };
+        if(auto match = constRx.match(name); match.hasMatch())
         {
             result.modifiers |= Symbol::IsConst;
             result.type = NameType::Method;
         }
 
-        static QRegExp const accessModifierRx{ "^(public|protected|private):" };
-        if(accessModifierRx.indexIn(name) > -1)
+        static QRegularExpression const accessModifierRx{ "^(public|protected|private):" };
+        if(auto match = accessModifierRx.match(name); match.hasMatch())
         {
             result.type = NameType::Method;
-            QString const accessStr = accessModifierRx.cap(1);
+            QStringRef const accessStr = match.capturedRef(1);
             result.access = Access::Public;
             if(accessStr == "protected")
             {
@@ -166,19 +168,20 @@ namespace SymSeek::detail
             name.remove(0, accessStr.length() + 2 /*colon and space*/);
         }
 
-        static QRegExp const modifierRx{ "^(virtual|static)" };
-        if(result.type == NameType::Method && modifierRx.indexIn(name) > -1)
-        {
-            QString const modifier = modifierRx.cap(1);
-            if(modifier == "static")
-                result.modifiers |= Symbol::IsStatic;
-            else
-                result.modifiers |= Symbol::IsVirtual;
-            name.remove(0, modifier.length() + 1 /*space*/);
-        }
+        static QRegularExpression const modifierRx{ "^(virtual|static)" };
+        if(result.type == NameType::Method)
+            if(auto match = modifierRx.match(name); match.hasMatch())
+            {
+                QStringRef const modifier = match.capturedRef(1);
+                if(modifier == "static")
+                    result.modifiers |= Symbol::IsStatic;
+                else
+                    result.modifiers |= Symbol::IsVirtual;
+                name.remove(0, modifier.length() + 1 /*space*/);
+            }
 
-        static QRegExp const signatureRx{ R"(^(.+)\((.*)\)(\s*const\s*)?(&|&&)?$)" };
-        if(!signatureRx.exactMatch(name))
+        static QRegularExpression const signatureRx{ R"(^(.+)\((.*)\)(\s*const\s*)?(&|&&)?$)" };
+        if(auto match = signatureRx.match(name); !match.hasMatch())
         {
             result.type = NameType::Variable;
             if(name.contains("const "))

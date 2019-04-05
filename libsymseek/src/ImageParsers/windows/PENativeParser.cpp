@@ -57,7 +57,7 @@ namespace SymSeek::detail
     class PENativeSymbolReader: public ISymbolReader
     {
         // Unfortunately cannot inherit from PETypes<Machine> to pull these types into the context :(
-        // Neither MinGW doesn't allow this, Visual Studio does.
+        // MinGW doesn't allow this, Visual Studio does.
         using BytePtr             = typename PETypes<Machine>::BytePtr            ;
         using DOSHeaderPtr        = typename PETypes<Machine>::DOSHeaderPtr       ;
         using ExportDirectoryPtr  = typename PETypes<Machine>::ExportDirectoryPtr ;
@@ -67,6 +67,8 @@ namespace SymSeek::detail
         using OptionalHeaderPtr   = typename PETypes<Machine>::OptionalHeaderPtr  ;
         using SectionHeaderPtr    = typename PETypes<Machine>::SectionHeaderPtr   ;
         using ThunkDataPtr        = typename PETypes<Machine>::ThunkDataPtr       ;
+
+        static constexpr auto ImageOrdinalFlag = PETypes<Machine>::ImageOrdinalFlag;
 
         template<typename T>
         T map(DWORD virtualAddress) const
@@ -157,10 +159,10 @@ namespace SymSeek::detail
                         namesTable->u1.Function; ++namesTable)
                     {
                         Symbol symbol;
-                        if(namesTable->u1.Ordinal & PETypes<Machine>::ImageOrdinalFlag)
+                        if(namesTable->u1.Ordinal & ImageOrdinalFlag)
                         {
                             QString name = QStringLiteral("%1/#%2").arg(importedModuleName)
-                                    .arg(namesTable->u1.Ordinal ^ PETypes<Machine>::ImageOrdinalFlag);
+                                    .arg(namesTable->u1.Ordinal ^ ImageOrdinalFlag);
                             symbol.mangledName = symbol.demangledName = name;
                         }
                         else
