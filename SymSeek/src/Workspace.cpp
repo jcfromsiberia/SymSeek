@@ -125,6 +125,7 @@ Workspace::Workspace(QWidget *parent)
     connect(m_ui->chbRegex, &QCheckBox::stateChanged, [this](int state) {
         m_ui->leSymbolName->setValidator(state == Qt::Checked ? m_regexValidator : nullptr);
     });
+    connect(m_ui->leDirectory, &QLineEdit::textChanged, this, &Workspace::titleChanged);
 }
 
 static void flashWidget(QWidget * widget)
@@ -248,7 +249,7 @@ void Workspace::loadSettings(uint index)
     QSettings settings;
     settings.beginGroup(guiGroupPrefix + QString::number(index));
 
-    m_ui->leDirectory->setText(settings.value(directorySetting).toString());
+    m_ui->leDirectory->setText(settings.value(directorySetting, QDir::currentPath()).toString());
     m_ui->leGlobs->setText(settings.value(globsSetting,
             QString{
 // TODO Get these globs from the available image parsers

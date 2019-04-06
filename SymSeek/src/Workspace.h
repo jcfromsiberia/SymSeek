@@ -55,6 +55,9 @@ public:
     void loadSettings(uint index);
     void storeSettings(uint index) const;
 
+Q_SIGNALS:
+    void titleChanged(QString newTitle);
+
 private:
     void doSearch();
 

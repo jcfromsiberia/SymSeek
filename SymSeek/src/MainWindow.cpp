@@ -1,7 +1,6 @@
 #include "MainWindow.h"
 
 #include <QtCore/QSettings>
-
 #include <QtWidgets/QStyle>
 #include <QtWidgets/QTabBar>
 #include <QtWidgets/QToolButton>
@@ -45,12 +44,24 @@ MainWindow::~MainWindow()
 
 int MainWindow::addWorkspace()
 {
-    QPointer<Workspace> newTab{ new Workspace(m_ui->tabWidget) };
+    QPointer<Workspace> newWorkspace{ new Workspace(m_ui->tabWidget) };
     // Always insert before the last (plus) tab
     int index = m_ui->tabWidget->count() - 1;
     m_ui->tabWidget->insertTab(index,
-            newTab.data(), QStringLiteral("Workspace ") + QString::number(index + 1));
-    newTab->loadSettings(index);
+            newWorkspace.data(), QStringLiteral("Workspace ") + QString::number(index + 1));
+
+    // Update tab titles
+    connect(newWorkspace, &Workspace::titleChanged, /*context=*/this,
+        [this, newWorkspace](QString newTitle) {
+            // Index may have changed as the tabs are movable, so obtaining it again
+            int index = m_ui->tabWidget->indexOf(GUARD(newWorkspace));
+            Q_ASSERT(index != -1);
+            m_ui->tabWidget->setTabText(index, newTitle);
+            m_ui->tabWidget->setTabToolTip(index, newTitle);
+        }
+    );
+
+    newWorkspace->loadSettings(index);
     return index;
 }
 
