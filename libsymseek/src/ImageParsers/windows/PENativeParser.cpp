@@ -51,6 +51,8 @@ struct PETypes<IMAGE_FILE_MACHINE_AMD64>
     static constexpr auto ImageOrdinalFlag = IMAGE_ORDINAL_FLAG64;
 };
 
+using QFileUPtr = std::unique_ptr<QFile>;
+
 namespace SymSeek::detail
 {
     template<WORD Machine>
@@ -86,10 +88,10 @@ namespace SymSeek::detail
             return reinterpret_cast<T>(GUARD(m_moduleBytes) + offset);
         }
     public:
-        PENativeSymbolReader(QByteArray moduleByteArray)
-        : m_moduleByteArray{ std::move(moduleByteArray) }
+        PENativeSymbolReader(QFileUPtr moduleFile, BytePtr moduleBytes)
+        : m_moduleFile { std::move(moduleFile) }
+        , m_moduleBytes{ moduleBytes           }
         {
-            m_moduleBytes = reinterpret_cast<BytePtr>(m_moduleByteArray.data());
             m_dosHeader = reinterpret_cast<DOSHeaderPtr>(m_moduleBytes);
             m_ntHeader = reinterpret_cast<NTHeadersPtr>(m_moduleBytes + m_dosHeader->e_lfanew);
 
@@ -97,14 +99,14 @@ namespace SymSeek::detail
             m_sectionHeader = reinterpret_cast<SectionHeaderPtr>(
                     m_moduleBytes + m_dosHeader->e_lfanew + sizeof(std::remove_pointer_t<NTHeadersPtr>));
 
-            DWORD exportAddressOffset = m_ntHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
-            if(exportAddressOffset)
+            if(DWORD exportAddressOffset = m_ntHeader->
+                    OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress; exportAddressOffset)
             {
                 m_exportDirectory = map<ExportDirectoryPtr>(exportAddressOffset);
             }
 
-            DWORD importAddressOffset = m_ntHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
-            if(importAddressOffset)
+            if(DWORD importAddressOffset = m_ntHeader->
+                    OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress; importAddressOffset)
             {
                 m_importDescriptor = map<ImportDescriptorPtr>(importAddressOffset);
             }
@@ -196,7 +198,7 @@ namespace SymSeek::detail
         }
 
     private:
-        QByteArray m_moduleByteArray;
+        QFileUPtr m_moduleFile;  // Whilst this ptr lives, memory mapping is valid
         BytePtr m_moduleBytes{};
         DOSHeaderPtr m_dosHeader{};
         NTHeadersPtr m_ntHeader{};
@@ -210,11 +212,12 @@ namespace SymSeek::detail
 ISymbolReader::UPtr PENativeParser::reader(QString imagePath) const
 {
     // See https://docs.microsoft.com/en-us/windows/desktop/debug/pe-format
-    QFile moduleFile(imagePath);
-    GUARD(moduleFile.open(QFile::ReadOnly));
+    QFileUPtr moduleFile{std::make_unique<QFile>(imagePath)};
+    GUARD(moduleFile->open(QFile::ReadOnly));
 
-    QByteArray moduleByteArray = moduleFile.readAll();
-    LPBYTE moduleBytes = reinterpret_cast<LPBYTE>(moduleByteArray.data());
+    uchar * mapped = moduleFile->map(0, moduleFile->size(), QFileDevice::MapPrivateOption);
+
+    LPBYTE moduleBytes = reinterpret_cast<LPBYTE>(mapped);
 
     // Checking for signatures
     PIMAGE_DOS_HEADER dosHeader = reinterpret_cast<PIMAGE_DOS_HEADER>(moduleBytes);
@@ -248,10 +251,13 @@ ISymbolReader::UPtr PENativeParser::reader(QString imagePath) const
             return {};
     }
 
+    using I386PEReader  = detail::PENativeSymbolReader<IMAGE_FILE_MACHINE_I386>;
+    using AMD6PE4Reader = detail::PENativeSymbolReader<IMAGE_FILE_MACHINE_AMD64>;
+
     if(machine == IMAGE_FILE_MACHINE_I386)
-        return std::make_unique<detail::PENativeSymbolReader<IMAGE_FILE_MACHINE_I386>>(std::move(moduleByteArray));
+        return std::make_unique<I386PEReader>(std::move(moduleFile), moduleBytes);
     if(machine == IMAGE_FILE_MACHINE_AMD64)
-        return std::make_unique<detail::PENativeSymbolReader<IMAGE_FILE_MACHINE_AMD64>>(std::move(moduleByteArray));
+        return std::make_unique<AMD6PE4Reader>(std::move(moduleFile), moduleBytes);
 
     return {};
 }
