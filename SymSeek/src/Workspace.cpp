@@ -254,7 +254,7 @@ void Workspace::loadSettings(uint index)
             QString{
 // TODO Get these globs from the available image parsers
 #if defined(Q_OS_WIN)
-                  "*.dll;*.exe;*.lib;*.a"
+                  "*.dll;*.exe;*.lib;*.a;*.obj"
 #elif defined(Q_OS_LINUX)
                   "*"
 #endif

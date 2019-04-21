@@ -6,7 +6,9 @@ When dealing with a large set of binaries in a product, including the 3rd party 
 
 ## Features
 - Searching names within binaries filtered by globs
-- PE files support (\*.exe and \*.dll), archive and import libraries (\*.lib) support. CLR/.NET assemblies are not supported.
+- PE files support (\*.exe and \*.dll). CLR/.NET assemblies are not supported.
+- Archive and import libraries (\*.lib) support.
+- COFF files support (\*.obj).
 - ELF files support (\*.so). Not implemented yet.
 - Mach-O files support (\*.dylib). Not implemented yet.
 

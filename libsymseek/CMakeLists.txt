@@ -23,6 +23,8 @@ if(WIN32)
             src/ImageParsers/windows/PENativeParser.cpp
             src/ImageParsers/windows/LIBNativeParser.h
             src/ImageParsers/windows/LIBNativeParser.cpp
+            src/ImageParsers/windows/COFFNativeParser.h
+            src/ImageParsers/windows/COFFNativeParser.cpp
             src/ImageParsers/windows/WinHelpers.h
             src/ImageParsers/windows/WinHelpers.cpp
     )

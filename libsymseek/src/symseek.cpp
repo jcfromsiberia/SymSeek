@@ -10,6 +10,7 @@
 #if defined(Q_OS_WIN)
 #   include "src/ImageParsers/windows/LIBNativeParser.h"
 #   include "src/ImageParsers/windows/PENativeParser.h"
+#   include "src/ImageParsers/windows/COFFNativeParser.h"
 #elif defined(Q_OS_LINUX)
 #   include "ImageParsers/linux/ELFNativeParser.h"
 #endif
@@ -44,6 +45,7 @@ QVector<SymbolsInBinary> SymbolSeeker::findSymbols(QString const &directoryPath,
 #if defined(Q_OS_WIN)
         std::make_unique<LIBNativeParser>(),
         std::make_unique<PENativeParser>(),
+        std::make_unique<COFFNativeParser>(),
 #elif defined(Q_OS_LINUX)
         std::make_unique<ELFNativeParser>(),
 #endif
