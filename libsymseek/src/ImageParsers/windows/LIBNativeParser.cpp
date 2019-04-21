@@ -56,7 +56,14 @@ void LIBNativeSymbolReader::readInto(ISymbolReader::SymbolsInserter outputIter, 
     LPCCH symTable = reinterpret_cast<LPCCH>(mapped);
     for(uint32_t i = 0; i < m_symbolsCount; ++i, symTable += strlen(symTable) + /*terminator \0*/1)
     {
-        *outputIter++ = detail::nameToSymbol(symTable);
+        Symbol symbol = detail::nameToSymbol(symTable);
+        SymbolHandlerAction action = handler(symbol);
+        if(action == SymbolHandlerAction::Skip)
+            continue;
+        if(action == SymbolHandlerAction::Stop)
+            return;
+        Q_ASSERT(action == SymbolHandlerAction::Add);
+        *outputIter++ = std::move(symbol);
     }
     m_archiveFile->unmap(mapped);
 }

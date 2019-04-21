@@ -15,7 +15,7 @@
 using namespace SymSeek;
 
 template<WORD Machine>
-struct PETypes{};
+struct PETypes;
 
 template<>
 struct PETypes<IMAGE_FILE_MACHINE_I386>
@@ -146,7 +146,7 @@ namespace SymSeek::detail
                     if(action == SymbolHandlerAction::Stop)
                         return;
                     Q_ASSERT(action == SymbolHandlerAction::Add);
-                    *outputIter++ = detail::nameToSymbol(mangledName);
+                    *outputIter++ = std::move(symbol);
                 }
             }
 
@@ -252,12 +252,12 @@ ISymbolReader::UPtr PENativeParser::reader(QString imagePath) const
     }
 
     using I386PEReader  = detail::PENativeSymbolReader<IMAGE_FILE_MACHINE_I386>;
-    using AMD6PE4Reader = detail::PENativeSymbolReader<IMAGE_FILE_MACHINE_AMD64>;
+    using AMD64PEReader = detail::PENativeSymbolReader<IMAGE_FILE_MACHINE_AMD64>;
 
     if(machine == IMAGE_FILE_MACHINE_I386)
         return std::make_unique<I386PEReader>(std::move(moduleFile), moduleBytes);
     if(machine == IMAGE_FILE_MACHINE_AMD64)
-        return std::make_unique<AMD6PE4Reader>(std::move(moduleFile), moduleBytes);
+        return std::make_unique<AMD64PEReader>(std::move(moduleFile), moduleBytes);
 
     return {};
 }
