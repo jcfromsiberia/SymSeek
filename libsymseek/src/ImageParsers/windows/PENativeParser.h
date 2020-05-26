@@ -1,24 +1,21 @@
 #pragma once
 
-#include <QtCore/QtGlobal>
-#if !defined(Q_OS_WIN)
+#include <symseek/Definitions.h>
+
+#if !SYMSEEK_OS_WIN()
 #   error Unsupported platform
 #endif
 
 #include <memory>
 #include <type_traits>
 
-#include <Windows.h>
-
-#include <QtCore/QByteArray>
-
-#include "src/ImageParsers/IImageParser.h"
+#include <symseek/IImageParser.h>
 
 namespace SymSeek
 {
     class PENativeParser: public IImageParser
     {
     public:
-        ISymbolReader::UPtr reader(QString imagePath) const override;
+        ISymbolReader::UPtr reader(String const & imagePath) const override;
     };
 }

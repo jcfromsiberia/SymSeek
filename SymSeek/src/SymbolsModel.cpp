@@ -4,6 +4,8 @@
 
 #include <QtGui/QColor>
 
+using namespace SymSeek::QtUI;
+
 SymbolsModel::SymbolsModel(QObject *parent)
 : QAbstractTableModel(parent)
 {
@@ -103,10 +105,15 @@ QVariant SymbolsModel::data(QModelIndex const & index, int role) const
             break;
         case 4:
             {
-                if(role == Qt::DisplayRole)
-                    return sym.demangledName;
-                if(role == Qt::ToolTipRole)
-                    return sym.mangledName;
+                if (role == Qt::DisplayRole)
+                {
+                    return toQString(sym.demangledName);
+                }
+
+                if (role == Qt::ToolTipRole)
+                {
+                    return toQString(sym.mangledName);
+                }
             }
             break;
         default:;
@@ -115,7 +122,7 @@ QVariant SymbolsModel::data(QModelIndex const & index, int role) const
     return {};
 }
 
-void SymbolsModel::setSymbols(QVector<SymSeek::SymbolsInBinary> symbolsInBinaries)
+void SymbolsModel::setSymbols(QVector<SymbolsInBinary> symbolsInBinaries)
 {
     Q_EMIT beginResetModel();
     m_binaries.clear();

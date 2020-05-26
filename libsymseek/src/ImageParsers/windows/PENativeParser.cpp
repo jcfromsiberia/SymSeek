@@ -5,10 +5,8 @@
 
 #include <Windows.h>
 
-#include <QtCore/QFile>
-#include <QtCore/QRegExp>
-
 #include <Debug.h>
+#include <Helpers.h>
 
 #include "WinHelpers.h"
 
@@ -20,16 +18,16 @@ struct PETypes;
 template<>
 struct PETypes<IMAGE_FILE_MACHINE_I386>
 {
-    using BytePtr             = LPBYTE;
-    using DOSHeaderPtr        = PIMAGE_DOS_HEADER;
-    using ExportDirectoryPtr  = PIMAGE_EXPORT_DIRECTORY;
-    using ImportByNamePtr     = PIMAGE_IMPORT_BY_NAME;
-    using ImportDescriptorPtr = PIMAGE_IMPORT_DESCRIPTOR;
+    using BytePtr             = LPCBYTE;
+    using DOSHeaderPtr        = IMAGE_DOS_HEADER const *;
+    using ExportDirectoryPtr  = IMAGE_EXPORT_DIRECTORY const *;
+    using ImportByNamePtr     = IMAGE_IMPORT_BY_NAME const *;
+    using ImportDescriptorPtr = IMAGE_IMPORT_DESCRIPTOR const *;
     using NTHeaders           = IMAGE_NT_HEADERS32;
-    using NTHeadersPtr        = PIMAGE_NT_HEADERS32;
-    using OptionalHeaderPtr   = PIMAGE_OPTIONAL_HEADER32;
-    using SectionHeaderPtr    = PIMAGE_SECTION_HEADER;
-    using ThunkDataPtr        = PIMAGE_THUNK_DATA32;
+    using NTHeadersPtr        = IMAGE_NT_HEADERS32 const *;
+    using OptionalHeaderPtr   = IMAGE_OPTIONAL_HEADER32 const *;
+    using SectionHeaderPtr    = IMAGE_SECTION_HEADER const *;
+    using ThunkDataPtr        = IMAGE_THUNK_DATA32 const *;
 
     static constexpr auto ImageOrdinalFlag = IMAGE_ORDINAL_FLAG32;
 };
@@ -37,21 +35,21 @@ struct PETypes<IMAGE_FILE_MACHINE_I386>
 template<>
 struct PETypes<IMAGE_FILE_MACHINE_AMD64>
 {
-    using BytePtr             = LPBYTE;
-    using DOSHeaderPtr        = PIMAGE_DOS_HEADER;
-    using ExportDirectoryPtr  = PIMAGE_EXPORT_DIRECTORY;
-    using ImportByNamePtr     = PIMAGE_IMPORT_BY_NAME;
-    using ImportDescriptorPtr = PIMAGE_IMPORT_DESCRIPTOR;
+    using BytePtr             = LPCBYTE;
+    using DOSHeaderPtr        = IMAGE_DOS_HEADER const *;
+    using ExportDirectoryPtr  = IMAGE_EXPORT_DIRECTORY const *;
+    using ImportByNamePtr     = IMAGE_IMPORT_BY_NAME const *;
+    using ImportDescriptorPtr = IMAGE_IMPORT_DESCRIPTOR const *;
     using NTHeaders           = IMAGE_NT_HEADERS64;
-    using NTHeadersPtr        = PIMAGE_NT_HEADERS64;
-    using OptionalHeaderPtr   = PIMAGE_OPTIONAL_HEADER64;
-    using SectionHeaderPtr    = PIMAGE_SECTION_HEADER;
-    using ThunkDataPtr        = PIMAGE_THUNK_DATA64;
+    using NTHeadersPtr        = IMAGE_NT_HEADERS64 const *;
+    using OptionalHeaderPtr   = IMAGE_OPTIONAL_HEADER64 const *;
+    using SectionHeaderPtr    = IMAGE_SECTION_HEADER const *;
+    using ThunkDataPtr        = IMAGE_THUNK_DATA64 const *;
 
     static constexpr auto ImageOrdinalFlag = IMAGE_ORDINAL_FLAG64;
 };
 
-using QFileUPtr = std::unique_ptr<QFile>;
+using FileUPtr = std::unique_ptr<detail::IMappedFile>;
 
 namespace SymSeek::detail
 {
@@ -73,7 +71,7 @@ namespace SymSeek::detail
         static constexpr auto ImageOrdinalFlag = PETypes<Machine>::ImageOrdinalFlag;
 
         template<typename T>
-        T map(DWORD virtualAddress) const
+        T map(ULONGLONG virtualAddress) const
         {
             DWORD section{};
             for (; section < m_sectionsCount; ++section)
@@ -81,14 +79,17 @@ namespace SymSeek::detail
                 DWORD sectionBeginRVA = GUARD(m_sectionHeader)[section].VirtualAddress;
                 DWORD sectionEndRVA = sectionBeginRVA + m_sectionHeader[section].Misc.VirtualSize;
                 if (sectionBeginRVA <= virtualAddress && virtualAddress <= sectionEndRVA)
+                {
                     break;
+                }
             }
-            DWORD offset = GUARD(m_sectionHeader)[section].PointerToRawData +
-                           virtualAddress - m_sectionHeader[section].VirtualAddress;
+            
+            ULONGLONG offset = GUARD(m_sectionHeader)[section].PointerToRawData +
+                virtualAddress - m_sectionHeader[section].VirtualAddress;
             return reinterpret_cast<T>(GUARD(m_moduleBytes) + offset);
         }
     public:
-        PENativeSymbolReader(QFileUPtr moduleFile, BytePtr moduleBytes)
+        PENativeSymbolReader(FileUPtr moduleFile, BytePtr moduleBytes)
         : m_moduleFile { std::move(moduleFile) }
         , m_moduleBytes{ moduleBytes           }
         {
@@ -99,13 +100,13 @@ namespace SymSeek::detail
             m_sectionHeader = reinterpret_cast<SectionHeaderPtr>(
                     m_moduleBytes + m_dosHeader->e_lfanew + sizeof(std::remove_pointer_t<NTHeadersPtr>));
 
-            if(DWORD exportAddressOffset = m_ntHeader->
+            if (DWORD exportAddressOffset = m_ntHeader->
                     OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress; exportAddressOffset)
             {
                 m_exportDirectory = map<ExportDirectoryPtr>(exportAddressOffset);
             }
 
-            if(DWORD importAddressOffset = m_ntHeader->
+            if (DWORD importAddressOffset = m_ntHeader->
                     OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress; importAddressOffset)
             {
                 m_importDescriptor = map<ImportDescriptorPtr>(importAddressOffset);
@@ -115,90 +116,75 @@ namespace SymSeek::detail
         size_t symbolsCount() const override
         {
             size_t result{};
-            if(m_exportDirectory)
+            if (m_exportDirectory)
+            {
                 result += m_exportDirectory->NumberOfNames;
-            if(m_importDescriptor)
+            }
+
+            if (m_importDescriptor)
+            {
                 result += 1; // FIXME calculate the imported symbols here!
+            }
             return result;
         }
 
-        void readInto(SymbolsInserter outputIter, SymbolHandler handler) const override
+        SymbolsGen readSymbols() const override
         {
             ExportDirectoryPtr dir = m_exportDirectory;
-            if(dir)  // Has exports
+            if (dir)  // Has exports
             {
-                PDWORD names = map<PDWORD>(dir->AddressOfNames);
-                PDWORD addresses = map<PDWORD>(dir->AddressOfNames);
-                PWORD ordinals = map<PWORD>(dir->AddressOfNameOrdinals);
+                DWORD const * names = map<DWORD const *>(dir->AddressOfNames);
+                DWORD const * addresses = map<DWORD const *>(dir->AddressOfNames);
+                WORD const * ordinals = map<WORD const *>(dir->AddressOfNameOrdinals);
 
-                for (DWORD i = 0; i < dir->NumberOfNames; ++i) {
-                    LPCCH mangledName = GUARD(map < char const *>(names[i]));
-                    if(!handler)
-                    {
-                        // Avoiding extra copy of the Symbol instance
-                        *outputIter++ = detail::nameToSymbol(mangledName);
-                        continue;
-                    }
-                    Symbol symbol = detail::nameToSymbol(mangledName);
-                    SymbolHandlerAction action = handler(symbol);
-                    if(action == SymbolHandlerAction::Skip)
-                        continue;
-                    if(action == SymbolHandlerAction::Stop)
-                        return;
-                    Q_ASSERT(action == SymbolHandlerAction::Add);
-                    *outputIter++ = std::move(symbol);
+                for (DWORD i = 0; i < dir->NumberOfNames; ++i) 
+                {
+                    LPCCH mangledName = GUARD(map<char const *>(names[i]));
+                    
+                    co_yield detail::nameToSymbol(mangledName);
                 }
             }
 
             ImportDescriptorPtr imp = m_importDescriptor;
-            if(imp)  // Has imports
+            if (imp)  // Has imports
             {
-                while(imp->OriginalFirstThunk)
+                while (imp->OriginalFirstThunk)
                 {
                     LPCCH importedModuleName = map<LPCCH>(imp->Name);
 
-                    for(ThunkDataPtr namesTable = map<ThunkDataPtr>(imp->OriginalFirstThunk);
-                        namesTable->u1.Function; ++namesTable)
+                    for (ThunkDataPtr namesTable = map<ThunkDataPtr>(imp->OriginalFirstThunk);
+                         namesTable->u1.Function; ++namesTable)
                     {
                         Symbol symbol;
-                        if(namesTable->u1.Ordinal & ImageOrdinalFlag)
+                        if (namesTable->u1.Ordinal & ImageOrdinalFlag)
                         {
-                            QString name = QStringLiteral("%1/#%2").arg(importedModuleName)
-                                    .arg(namesTable->u1.Ordinal ^ ImageOrdinalFlag);
-                            symbol.mangledName = symbol.demangledName = name;
+                            String name = detail::toString(importedModuleName) + TEXT("/#") + 
+                                detail::toString(namesTable->u1.Ordinal ^ ImageOrdinalFlag);
+                            symbol.mangledName = symbol.demangledName = std::move(name);
                         }
                         else
                         {
                             ImportByNamePtr importByName = map<ImportByNamePtr>(
                                     namesTable->u1.AddressOfData);
                             LPCCH mangledName = reinterpret_cast<LPCCH>(importByName->Name);
-                            if (!handler)
-                            {
-                                // Avoiding extra copy of the Symbol instance
-                                *outputIter++ = detail::nameToSymbol(mangledName);
-                                continue;
-                            }
-                            symbol = detail::nameToSymbol(mangledName);
+                            // Avoiding extra copy of the Symbol instance
+                            co_yield detail::nameToSymbol(mangledName);
+                            continue;
                         }
                         symbol.implements = false;
-                        SymbolHandlerAction action = handler(symbol);
-                        if(action == SymbolHandlerAction::Skip)
-                            continue;
-                        if(action == SymbolHandlerAction::Stop)
-                            return;
-                        Q_ASSERT(action == SymbolHandlerAction::Add);
-                        *outputIter++ = std::move(symbol);
+                        co_yield std::move(symbol);
                     }
                     imp++;
                 }
             }
         }
+
         ~PENativeSymbolReader()
         {
         }
 
     private:
-        QFileUPtr m_moduleFile;  // Whilst this ptr lives, memory mapping is valid
+        FileUPtr m_moduleFile;  // Whilst this ptr lives, memory mapping is valid
         BytePtr m_moduleBytes{};
         DOSHeaderPtr m_dosHeader{};
         NTHeadersPtr m_ntHeader{};
@@ -209,55 +195,65 @@ namespace SymSeek::detail
     };
 }
 
-ISymbolReader::UPtr PENativeParser::reader(QString imagePath) const
+ISymbolReader::UPtr PENativeParser::reader(String const & imagePath) const
 {
     // See https://docs.microsoft.com/en-us/windows/desktop/debug/pe-format
-    QFileUPtr moduleFile{std::make_unique<QFile>(imagePath)};
-    GUARD(moduleFile->open(QFile::ReadOnly));
+    FileUPtr moduleFile = detail::createMappedFile(imagePath);
 
-    uchar * mapped = moduleFile->map(0, moduleFile->size(), QFileDevice::MapPrivateOption);
+    GUARD(moduleFile);
 
-    LPBYTE moduleBytes = reinterpret_cast<LPBYTE>(mapped);
+    uint8_t const * mapped = moduleFile->map();
+
+    LPCBYTE moduleBytes = reinterpret_cast<LPCBYTE>(mapped);
 
     // Checking for signatures
-    PIMAGE_DOS_HEADER dosHeader = reinterpret_cast<PIMAGE_DOS_HEADER>(moduleBytes);
-    if(dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
+    IMAGE_DOS_HEADER const * dosHeader = reinterpret_cast<IMAGE_DOS_HEADER const *>(moduleBytes);
+    if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
     {
         return {};
     }
 
-    PIMAGE_NT_HEADERS ntHeader = reinterpret_cast<PIMAGE_NT_HEADERS>(moduleBytes + dosHeader->e_lfanew);
+    IMAGE_NT_HEADERS const * ntHeader = reinterpret_cast<IMAGE_NT_HEADERS const *>(moduleBytes + dosHeader->e_lfanew);
 
     WORD const machine = ntHeader->FileHeader.Machine;
 
-    if(ntHeader->Signature != IMAGE_NT_SIGNATURE)
+    if (ntHeader->Signature != IMAGE_NT_SIGNATURE)
     {
         return {};
     }
 
     // Ignoring CLR/.NET assemblies
-    if(ntHeader->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC)
+    if (ntHeader->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC)
     {
-        DWORD comDescrVA = reinterpret_cast<PIMAGE_NT_HEADERS32>(ntHeader)->OptionalHeader
-                .DataDirectory[IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR].VirtualAddress;
-        if(comDescrVA)
+        DWORD comDescrVA = reinterpret_cast<IMAGE_NT_HEADERS32 const *>(ntHeader)->OptionalHeader
+            .DataDirectory[IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR].VirtualAddress;
+        if (comDescrVA)
+        {
             return {};
+        }
     }
-    if(ntHeader->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
+    if (ntHeader->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
     {
-        DWORD comDescrVA = reinterpret_cast<PIMAGE_NT_HEADERS64>(ntHeader)->OptionalHeader
-                .DataDirectory[IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR].VirtualAddress;
-        if(comDescrVA)
+        DWORD comDescrVA = reinterpret_cast<IMAGE_NT_HEADERS64 const *>(ntHeader)->OptionalHeader
+            .DataDirectory[IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR].VirtualAddress;
+        if (comDescrVA)
+        {
             return {};
+        }
     }
 
     using I386PEReader  = detail::PENativeSymbolReader<IMAGE_FILE_MACHINE_I386>;
     using AMD64PEReader = detail::PENativeSymbolReader<IMAGE_FILE_MACHINE_AMD64>;
 
-    if(machine == IMAGE_FILE_MACHINE_I386)
+    if (machine == IMAGE_FILE_MACHINE_I386)
+    {
         return std::make_unique<I386PEReader>(std::move(moduleFile), moduleBytes);
-    if(machine == IMAGE_FILE_MACHINE_AMD64)
+    }
+
+    else if (machine == IMAGE_FILE_MACHINE_AMD64)
+    {
         return std::make_unique<AMD64PEReader>(std::move(moduleFile), moduleBytes);
+    }
 
     return {};
 }

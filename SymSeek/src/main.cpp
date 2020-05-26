@@ -14,7 +14,7 @@ int main(int argc, char ** argv)
     // Same look and feel on all platforms
     app.setStyle(QStyleFactory::create("Fusion"));
 
-    MainWindow mw;
+    SymSeek::QtUI::MainWindow mw;
     mw.show();
 
     return app.exec();

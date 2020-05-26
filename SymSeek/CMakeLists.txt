@@ -7,21 +7,26 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 find_package(Qt5Widgets CONFIG REQUIRED)
 
-list(APPEND SYMSEEK_SOURCEFILES
-        src/Debug.h
+list(
+    APPEND
+        SYMSEEK_SOURCEFILES
+    src/Debug.h
 
-        src/Workspace.h
-        src/Workspace.cpp
-        src/workspace.ui
+    src/Workspace.h
+    src/Workspace.cpp
+    src/workspace.ui
 
-        src/MainWindow.h
-        src/MainWindow.cpp
-        src/mainwindow.ui
+    src/MainWindow.h
+    src/MainWindow.cpp
+    src/mainwindow.ui
 
-        src/SymbolsModel.h
-        src/SymbolsModel.cpp
+    src/SymbolsModel.h
+    src/SymbolsModel.cpp
 
-        src/main.cpp
+    src/SymbolSeeker.h
+    src/SymbolSeeker.cpp
+
+    src/main.cpp
 )
 
 add_executable(SymSeek ${SYMSEEK_SOURCEFILES})
@@ -29,4 +34,15 @@ add_executable(SymSeek ${SYMSEEK_SOURCEFILES})
 add_subdirectory(../libsymseek libsymseek)
 
 target_link_libraries(SymSeek Qt5::Widgets symseek)
-target_compile_features(SymSeek PUBLIC cxx_std_17)
+target_compile_features(SymSeek PUBLIC cxx_std_20)
+
+if(WIN32)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        get_target_property(FLAGS SymSeek COMPILE_FLAGS)
+        if(FLAGS STREQUAL "FLAGS-NOTFOUND")
+            set(FLAGS "")
+        endif()
+        set(FLAGS ${FLAGS} /await)
+        set_target_properties(SymSeek PROPERTIES COMPILE_FLAGS "${FLAGS}")
+    endif()
+endif()

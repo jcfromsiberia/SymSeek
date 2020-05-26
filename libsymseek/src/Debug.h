@@ -1,20 +1,19 @@
 #pragma once
 
-#include <QtCore/QtGlobal>
+#include <cassert>
 
-#define GUARD(cond) (SymSeek::detail::guard_x((cond), Q_FUNC_INFO, #cond, __FILE__, __LINE__))
+#define GUARD(cond) (SymSeek::detail::guard_x((cond), __FUNCTION__, #cond, __FILE__, __LINE__))
 
 namespace SymSeek
 {
     namespace detail
     {
         template<typename T>
-        T const & guard_x(T const & cond, char const * where, char const * what, char const * file, int line)
+        T const & guard_x([[maybe_unused]] T const & cond, [[maybe_unused]] char const * where, 
+            [[maybe_unused]] char const * what, [[maybe_unused]] char const * file, int line)
         {
 #ifndef NDEBUG
-            if (!!cond) {} else qt_assert_x(where, what, file, line);
-#else
-            Q_UNUSED(where); Q_UNUSED(what); Q_UNUSED(file); Q_UNUSED(line);
+            if (!!cond) {} else assert(false); // TODO fmt (where, what, file, line);
 #endif
             return cond;
         }

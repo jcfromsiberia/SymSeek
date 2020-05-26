@@ -1,29 +1,34 @@
 #include "LIBNativeParser.h"
 
-#include <QtCore/QDebug>
-#include <QtCore/QFile>
-#include <QtCore/QtEndian>
+#include <algorithm>
 
 #include <Debug.h>
+
+#include <Helpers.h>
 
 #include "WinHelpers.h"
 
 using namespace SymSeek;
 
-ISymbolReader::UPtr LIBNativeParser::reader(QString imagePath) const
+ISymbolReader::UPtr LIBNativeParser::reader(String const & imagePath) const
 {
-    auto archiveFile = std::make_unique<QFile>(imagePath);
-    GUARD(archiveFile->open(QFile::ReadOnly));
+    auto archiveFile = detail::createMappedFile(imagePath);
+    GUARD(!!archiveFile);
     // Avoid reading the entire file into a QByteArray as it can be extremely huge.
 
     // See https://docs.microsoft.com/en-us/windows/desktop/debug/pe-format#archive-library-file-format
-    if(archiveFile->read(8) != "!<arch>\n")
-        return {};
+    char signature[9] = {0};
+    archiveFile->read(&signature, sizeof(signature) /*Excluding null terminator*/- 1);
 
-    return std::make_unique<LIBNativeSymbolReader>(std::move(archiveFile));
+    if (!std::strcmp(signature, "!<arch>\n"))
+    {
+        return std::make_unique<LIBNativeSymbolReader>(std::move(archiveFile));
+    }
+
+    return {};
 }
 
-LIBNativeSymbolReader::LIBNativeSymbolReader(std::unique_ptr<QFile> archiveFile)
+LIBNativeSymbolReader::LIBNativeSymbolReader(std::unique_ptr<detail::IMappedFile> archiveFile)
 : m_archiveFile{ std::move(archiveFile) }
 {
     readSymbolsCount();
@@ -34,50 +39,43 @@ size_t LIBNativeSymbolReader::symbolsCount() const
     return m_symbolsCount;
 }
 
-void LIBNativeSymbolReader::readInto(ISymbolReader::SymbolsInserter outputIter, SymbolHandler handler) const
+LIBNativeSymbolReader::SymbolsGen LIBNativeSymbolReader::readSymbols() const
 {
-    if(!m_symbolsCount)
-        return;
-    quint64 const tableBeginOffset = /*Signature=*/8 + /*First_header=*/60 + /*Number_of_symbols=*/4 +
-                             /*Offsets_array=*/4 * m_symbolsCount;
-    m_archiveFile->seek(tableBeginOffset);
-    // There is no obvious way to read null-terminated string from file,
-    // QTextStream is unable to read this properly when the string's length is unknown
+    if (!m_symbolsCount)
+    {
+        co_return;
+    }
 
-    // Find out the offset of the table end, it ends with \n
-    m_archiveFile->readLine();
-    quint64 tableEndOffset = m_archiveFile->pos();
-
-    Q_ASSERT(tableBeginOffset < tableEndOffset);
+    size_t const tableBeginOffset = 
+        /*Signature=*/8 + /*First_header=*/60 + /*Number_of_symbols=*/4 +
+        /*Offsets_array=*/4 * m_symbolsCount;
 
     // Now we can map the symbol table onto the memory
-    uchar * mapped = m_archiveFile->map(tableBeginOffset,
-            tableEndOffset - tableBeginOffset, QFileDevice::MapPrivateOption);
+    uint8_t const * mapped = m_archiveFile->map(tableBeginOffset);
     LPCCH symTable = reinterpret_cast<LPCCH>(mapped);
-    for(uint32_t i = 0; i < m_symbolsCount; ++i, symTable += strlen(symTable) + /*terminator \0*/1)
+    for (uint32_t i = 0;
+        i < m_symbolsCount;
+        ++i, symTable += strlen(symTable) + /*terminator \0*/1)
     {
         Symbol symbol = detail::nameToSymbol(symTable);
-        SymbolHandlerAction action = handler(symbol);
-        if(action == SymbolHandlerAction::Skip)
-            continue;
-        if(action == SymbolHandlerAction::Stop)
-            return;
-        Q_ASSERT(action == SymbolHandlerAction::Add);
-        *outputIter++ = std::move(symbol);
+
+        co_yield std::move(symbol);
     }
-    m_archiveFile->unmap(mapped);
+    m_archiveFile->unmap();
 }
 
 void LIBNativeSymbolReader::readSymbolsCount()
 {
-    Q_ASSERT(!!m_archiveFile);
-    Q_ASSERT(m_archiveFile->isOpen());
+    GUARD(!!m_archiveFile);
+    GUARD(m_archiveFile->isOpen());
     // Skip the 1st mem header https://docs.microsoft.com/en-us/windows/desktop/debug/pe-format#archive-member-headers
     m_archiveFile->seek(/*Signature=*/8 + /*First_header=*/60);
 
     // Number of symbols https://docs.microsoft.com/en-us/windows/desktop/debug/pe-format#first-linker-member
-    QByteArray symbolsCountBytes = m_archiveFile->read(4);
+    static_assert(sizeof(m_symbolsCount) == 4);
+    m_archiveFile->read(&m_symbolsCount, 4);
 
     // The number is in Big Endian.
-    m_symbolsCount = qFromBigEndian<uint32_t>(symbolsCountBytes.data());
+    // TODO move to helper functions. It makes this TU more windows-specific
+    m_symbolsCount = ::_byteswap_ulong(m_symbolsCount);
 }
