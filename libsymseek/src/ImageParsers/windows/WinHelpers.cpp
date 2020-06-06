@@ -1,6 +1,8 @@
 #include "WinHelpers.h"
 
 #include <memory>
+#include <regex>
+#include <type_traits>
 
 #include <tchar.h>
 
@@ -16,9 +18,19 @@
 #   include <cxxabi.h>
 #endif
 
-#include <QtCore/QRegularExpression>
+#include <Debug.h>
+#include <Helpers.h>
 
-static QString demangleName(LPCCH mangledName)
+template<typename T = typename String::value_type>
+using RegEx = std::basic_regex<T>;
+
+template<typename T = typename String::const_iterator>
+using RegExMatch = std::match_results<T>;
+
+using SymSeek::String;
+using SymSeek::detail::toString;
+
+static String demangleName(LPCCH mangledName)
 {
     // Undocumented crap. The only doc I found is https://source.winehq.org/WineAPI/__unDNameEx.html
     using MallocFuncPtr = void * (*)(size_t);
@@ -33,7 +45,7 @@ static QString demangleName(LPCCH mangledName)
             unsigned short int flags);
 
     // Trying to find the advanced undecorate function
-    auto findUndName = [](TCHAR const * prefixName, TCHAR const * dllName)
+    auto findUndName = [](TCHAR const * pattern, TCHAR const * dllName) -> UndNamePtr
     {
         HMODULE vcRuntimeModule{};
 #if defined(PSAPI_FOUND)
@@ -46,28 +58,30 @@ static QString demangleName(LPCCH mangledName)
         // Cannot GetModuleHandle for the VC runtime library,
         // see http://alax.info/blog/1155
         EnumProcessModules(currentProcess, nullptr, 0, &requiredBytes);
-        Q_ASSERT(requiredBytes);
+        GUARD(requiredBytes);
         DWORD modulesCount = requiredBytes / sizeof(HMODULE);
         auto handles = std::make_unique<HMODULE[]>(modulesCount);
-        if(!EnumProcessModules(currentProcess, handles.get(), requiredBytes, &requiredBytes))
-            return UndNamePtr(nullptr);
+        if (!EnumProcessModules(currentProcess, handles.get(), requiredBytes, &requiredBytes))
+        {
+            return {};
+        }
 
         for (DWORD i = 0; i < modulesCount; ++i)
         {
             HMODULE module = handles[i];
-            Q_ASSERT(module);
+            GUARD(module);
             TCHAR buffer[4096] = {0};
             GetModuleFileName(module, buffer, sizeof(buffer) / sizeof(TCHAR));
             _tcslwr_s(buffer, sizeof(buffer) / sizeof(TCHAR));
-            TCHAR const * baseName = std::find(std::rbegin(buffer), std::rend(buffer), TEXT('\\')).base();
-            if (_tcsstr(baseName, prefixName))
+            String baseName = std::find(std::rbegin(buffer), std::rend(buffer), TEXT('\\')).base();
+            if (std::regex_match(baseName, RegEx<TCHAR>(pattern)))
             {
                 vcRuntimeModule = module;
                 break;
             }
         }
 #endif  //defined(PSAPI_FOUND)
-        if(!vcRuntimeModule)
+        if (!vcRuntimeModule && dllName)
         {
             // If the control flow is here, it means using a non-MSVC toolchain.
             // Trying to load the vcruntime manually
@@ -75,22 +89,37 @@ static QString demangleName(LPCCH mangledName)
             // No FreeLibrary call as the runtime should live while the static __unDNameEx exists.
             // Don't find it as a resource leak.
         }
-        return reinterpret_cast<UndNamePtr>(vcRuntimeModule ? GetProcAddress(vcRuntimeModule, "__unDNameEx") : nullptr);
+        UndNamePtr undName{};
+        if (vcRuntimeModule)
+        {
+            undName = reinterpret_cast<UndNamePtr>(::GetProcAddress(vcRuntimeModule, "__unDNameEx"));
+        }
+        return undName;
     };
 
-    static UndNamePtr __unDNameEx = [&findUndName]() {
+    static UndNamePtr __unDNameEx = [&findUndName]() -> UndNamePtr {
         // msvcrt has the obsolete __unDNameEx which doesn't handle move semantics
         // That's why looking for vcruntime first.
-        auto result = findUndName(TEXT("vcruntime"), TEXT("vcruntime140.dll"));
-        if(result)
-            return result;
-        return findUndName(TEXT("msvcrt"), TEXT("msvcrt.dll"));
+        static TCHAR const * names[][2] =
+        {
+            {TEXT(R"(^vcruntime\d+d?\..+$)"), TEXT("vcruntime140.dll"  )},
+            {TEXT(R"(^msvcrt$)"            ), TEXT("msvcrt.dll"        )},
+        };
+
+        for (TCHAR const ** namesRow: names)
+        {
+            if (auto result = findUndName(namesRow[0], namesRow[1]))
+            {
+                return result;
+            }
+        }
+        return {};
     }();
 
-    QString result = QString::fromLatin1(mangledName);
+    String result = toString(mangledName);
 
     // Prior to undecorating, check if the name has been mangled with the MSVC mangler
-    if(result.startsWith('?'))
+    if(*result.begin() == '?')
     {
         CHAR demandledSymbol[8192] = {0};  // should be enough
         auto const undFlags = UNDNAME_COMPLETE | UNDNAME_NO_MS_KEYWORDS | UNDNAME_NO_LEADING_UNDERSCORES;
@@ -98,7 +127,7 @@ static QString demangleName(LPCCH mangledName)
         {
             __unDNameEx(demandledSymbol, mangledName,
                         sizeof(demandledSymbol) / sizeof(CHAR), ::malloc, ::free, /*reserved=*/nullptr, undFlags);
-            result = QString::fromLatin1(demandledSymbol);
+            result = toString(demandledSymbol);
         }
 #if defined(DBGHELP_FOUND)
         else
@@ -106,7 +135,7 @@ static QString demangleName(LPCCH mangledName)
             // Unfortunately this function doesn't handle move semantics,
             // see e.g https://github.com/lucasg/Dependencies/issues/32
             ::UnDecorateSymbolName(mangledName, demandledSymbol, sizeof(demandledSymbol), undFlags);
-            result = QString::fromLatin1(demandledSymbol);
+            result = toString(demandledSymbol);
         }
 #endif  //defined(DBGHELP_FOUND)
     }
@@ -117,7 +146,7 @@ static QString demangleName(LPCCH mangledName)
         char * realName = ::abi::__cxa_demangle(mangledName, /*output_buffer=*/nullptr, /*length*/nullptr, &status);
         if(!status)
         {
-            result = QString::fromLatin1(realName);
+            result = toString(realName);
             ::free(realName);
         }
     }
@@ -130,62 +159,78 @@ namespace SymSeek::detail
 {
     Symbol nameToSymbol(LPCCH mangledName)
     {
-        QString mangledNameStr = QString::fromLatin1(mangledName);
-        QString demangledNameStr = demangleName(mangledName);
+        String mangledNameStr = toString(mangledName);//??_R4LIBNativeParser@SymSeek
+        String demangledNameStr = demangleName(mangledName);
 
         Symbol result;
         result.mangledName = mangledNameStr;
         result.demangledName = demangledNameStr;
 
-        if(mangledNameStr == demangledNameStr)
+        if (mangledNameStr == demangledNameStr)
         {
             // C function
             return result;
         }
-        QString name = demangledNameStr.trimmed();
+        String name = demangledNameStr;
 
-        static QRegularExpression const constRx{ R"(^.+\W+\s*const\s*(&|&&)?$)" };
-        if(auto match = constRx.match(name); match.hasMatch())
+        using Rx = RegEx<>;
+        using RxMatch = RegExMatch<>;
+        
+        static Rx const constRx{
+            TEXT(R"(^.+\W+\s*const\s*(&|&&)?$)"), std::regex::optimize};
+
+        if (RxMatch match; std::regex_match(name, match, constRx))
         {
             result.modifiers |= Symbol::IsConst;
             result.type = NameType::Method;
         }
 
-        static QRegularExpression const accessModifierRx{ "^(public|protected|private):" };
-        if(auto match = accessModifierRx.match(name); match.hasMatch())
+        static Rx const accessModifierRx{
+            TEXT(R"(^(public|protected|private):.+)"), std::regex::optimize};
+        if (RxMatch match; std::regex_match(name, match, accessModifierRx))
         {
             result.type = NameType::Method;
-            QStringRef const accessStr = match.capturedRef(1);
             result.access = Access::Public;
-            if(accessStr == "protected")
+            String const & accessStr = match[1];
+
+            if (accessStr == TEXT("protected"))
             {
                 result.access = Access::Protected;
             }
-            else if(accessStr == "private")
+            else if (accessStr == TEXT("private"))
             {
                 result.access = Access::Private;
             }
-            name.remove(0, accessStr.length() + 2 /*colon and space*/);
+
+            name.erase(0, accessStr.length() + 2 /*colon and space*/);
         }
 
-        static QRegularExpression const modifierRx{ "^(virtual|static)" };
-        if(result.type == NameType::Method)
-            if(auto match = modifierRx.match(name); match.hasMatch())
+        static Rx const modifierRx{
+            TEXT(R"(^(virtual|static).+)"), std::regex::optimize};
+        if (RxMatch match; std::regex_match(name, match, modifierRx))
+        {
+            String const & modifier = match[1];
+            if (modifier == TEXT("static"))
             {
-                QStringRef const modifier = match.capturedRef(1);
-                if(modifier == "static")
-                    result.modifiers |= Symbol::IsStatic;
-                else
-                    result.modifiers |= Symbol::IsVirtual;
-                name.remove(0, modifier.length() + 1 /*space*/);
+                result.modifiers |= Symbol::IsStatic;
+            }
+            else
+            {
+                result.modifiers |= Symbol::IsVirtual;
             }
 
-        static QRegularExpression const signatureRx{ R"(^(.+)\((.*)\)(\s*const\s*)?(&|&&)?$)" };
-        if(auto match = signatureRx.match(name); !match.hasMatch())
+            name.erase(0, modifier.length() + 1/*space*/);
+        }
+
+        static Rx const signatureRx{
+            TEXT( R"(^(.+)\((.*)\)(\s*const\s*)?(&|&&)?$)"), std::regex::optimize};
+        if (RxMatch match; !std::regex_match(name, match, signatureRx))
         {
             result.type = NameType::Variable;
-            if(name.contains("const "))
+            if (name.find(TEXT("const ")) != String::npos)
+            {
                 result.modifiers |= Symbol::IsConst;
+            }
         }
 
         result.demangledName = name;

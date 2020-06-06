@@ -15,6 +15,8 @@
 
 #include "Debug.h"
 
+using namespace SymSeek::QtUI;
+
 class CallbackValidator: public QValidator
 {
 public:
@@ -35,8 +37,9 @@ private:
     Callback m_callback;
 };
 
-AsyncSeeker::AsyncSeeker(QString const & directory, QStringList const & masks,
-                         SymSeek::SymbolHandler handler, QObject * parent)
+AsyncSeeker::AsyncSeeker(
+    QString const & directory, QStringList const & masks,
+    SymbolHandler handler, QObject * parent)
 : QThread{ parent }
 , m_directory{ directory }
 , m_masks    { masks     }
@@ -50,17 +53,17 @@ void AsyncSeeker::run()
     m_result = m_seeker.findSymbols(m_directory, m_masks, m_handler);
 }
 
-SymSeek::SymbolSeeker const * AsyncSeeker::seeker() const
+SymbolSeeker const * AsyncSeeker::seeker() const
 {
     return &m_seeker;
 }
 
-SymSeek::SymbolSeeker * AsyncSeeker::seeker()
+SymbolSeeker * AsyncSeeker::seeker()
 {
     return &m_seeker;
 }
 
-QVector<SymSeek::SymbolsInBinary> AsyncSeeker::result() const
+QVector<SymbolsInBinary> AsyncSeeker::result() const
 {
     return m_result;
 }
@@ -167,8 +170,14 @@ void Workspace::doSearch()
     );
 
     QRegExp symbolRx{ symbolName };
-    AsyncSeeker asyncSeeker{ directory, masks, [symbolName, isRegex, &symbolRx](Symbol const & symbol) {
-        return (isRegex ? symbolRx.indexIn(symbol.demangledName) > -1 : symbol.demangledName.contains(symbolName))
+    
+    AsyncSeeker asyncSeeker { 
+        directory, masks, [symbolName, isRegex, &symbolRx](Symbol const & symbol) 
+        {
+        QString demangledName = toQString(symbol.demangledName);
+
+        return (isRegex ? symbolRx.indexIn(demangledName) > -1 : 
+                demangledName.contains(symbolName))
                ? SymbolHandlerAction::Add
                : SymbolHandlerAction::Skip;
     } };

@@ -19,53 +19,56 @@ namespace Ui
 }
 QT_END_NAMESPACE
 
-class AsyncSeeker: public QThread
+namespace SymSeek::QtUI
 {
-    Q_OBJECT
+    class AsyncSeeker: public QThread
+    {
+        Q_OBJECT
 
-public:
-    AsyncSeeker(QString const & directory, QStringList const & masks,
-                SymSeek::SymbolHandler handler = {}, QObject * parent = nullptr);
+    public:
+        AsyncSeeker(QString const & directory, QStringList const & masks,
+            SymbolHandler handler = {}, QObject * parent = nullptr);
 
-    SymSeek::SymbolSeeker const * seeker() const;
-    SymSeek::SymbolSeeker * seeker();
+        SymbolSeeker const * seeker() const;
+        SymbolSeeker * seeker();
 
-    QVector<SymSeek::SymbolsInBinary> result() const;
+        QVector<SymbolsInBinary> result() const;
 
-protected:
-    void run() override;
+    protected:
+        void run() override;
 
-private:
-    SymSeek::SymbolSeeker m_seeker;
-    QVector<SymSeek::SymbolsInBinary> m_result;
-    QString m_directory;
-    QStringList m_masks;
-    SymSeek::SymbolHandler m_handler;
-};
+    private:
+        SymbolSeeker m_seeker;
+        QVector<SymbolsInBinary> m_result;
+        QString m_directory;
+        QStringList m_masks;
+        SymbolHandler m_handler;
+    };
 
-class Workspace : public QWidget
-{
-    Q_OBJECT
+    class Workspace : public QWidget
+    {
+        Q_OBJECT
 
-public:
-    Workspace(QWidget * parent = nullptr);
+    public:
+        Workspace(QWidget * parent = nullptr);
 
-    ~Workspace();
+        ~Workspace();
 
-    void loadSettings(uint index);
-    void storeSettings(uint index) const;
+        void loadSettings(uint index);
+        void storeSettings(uint index) const;
 
-Q_SIGNALS:
-    void titleChanged(QString newTitle);
+    Q_SIGNALS:
+        void titleChanged(QString newTitle);
 
-private:
-    void doSearch();
+    private:
+        void doSearch();
 
-private:
-    std::unique_ptr<Ui::Workspace> m_ui;
-    SymbolsModel m_model;
-    QSortFilterProxyModel m_proxyModel;
+    private:
+        std::unique_ptr<Ui::Workspace> m_ui;
+        SymbolsModel m_model;
+        QSortFilterProxyModel m_proxyModel;
 
-    QPointer<QValidator> m_directoryValidator;
-    QPointer<QValidator> m_regexValidator;
-};
+        QPointer<QValidator> m_directoryValidator;
+        QPointer<QValidator> m_regexValidator;
+    };
+}

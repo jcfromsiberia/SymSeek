@@ -1,13 +1,13 @@
 #pragma once
 
+#include <experimental/generator>
 #include <functional>
 #include <iterator>
 #include <memory>
+#include <string>
 
-#include <QtCore/QString>
-#include <QtCore/QVector>
-
-#include <symseek/symseek.h>
+#include "Definitions.h"
+#include "Symbol.h"
 
 namespace SymSeek
 {
@@ -15,10 +15,10 @@ namespace SymSeek
     {
     public:
         using UPtr = std::unique_ptr<ISymbolReader>;
-        using SymbolsInserter = std::back_insert_iterator<Symbols>;
+        using SymbolsGen = std::experimental::generator<Symbol>;
 
         virtual size_t symbolsCount() const = 0;  // for reserving enough space
-        virtual void readInto(SymbolsInserter outputIter, SymbolHandler handler = {}) const = 0;
+        virtual SymbolsGen readSymbols() const = 0;
 
         virtual ~ISymbolReader() = default;
     };
@@ -28,7 +28,7 @@ namespace SymSeek
     public:
         using UPtr = std::unique_ptr<IImageParser>;
 
-        virtual ISymbolReader::UPtr reader(QString imagePath) const = 0;
+        virtual ISymbolReader::UPtr reader(String const & imagePath) const = 0;
         virtual ~IImageParser() = default;
     };
 }

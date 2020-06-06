@@ -15,6 +15,8 @@ namespace
     QString const tabsCountSetting = QStringLiteral("gui/tabsCount");
 }
 
+using namespace SymSeek::QtUI;
+
 MainWindow::MainWindow(QWidget * parent)
 : QMainWindow{ parent }
 , m_ui{ std::make_unique<QT_PREPEND_NAMESPACE(Ui::MainWindow)>() }

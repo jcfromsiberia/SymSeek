@@ -1,45 +1,54 @@
 cmake_minimum_required(VERSION 3.7)
 project(SymSeek)
 
-# TODO: Get rid of Qt dependency here with std::filesystem is working on all toolchains
-# This bug https://sourceforge.net/p/mingw-w64/bugs/737/ is not fixed
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTOUIC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-set(CMAKE_CXX_STANDARD 17)
 
-find_package(Qt5Core CONFIG REQUIRED)
+list(
+    APPEND 
+        LIBSYMSEEK_SOURCEFILES
+    include/symseek/symseek.h
+    include/symseek/Definitions.h
+    include/symseek/IImageParser.h
+    include/symseek/Symbol.h
 
-list(APPEND LIBSYMSEEK_SOURCEFILES
-        include/symseek/symseek.h
-        src/symseek.cpp
-        src/Debug.h
-        src/ImageParsers/IImageParser.h
-)
+    src/symseek.cpp
+    src/Debug.h
+    src/Helpers.h
+    src/Helpers.cpp
+
+    src/MappedFile/IMappedFile.h
+    )
 
 if(WIN32)
-    list(APPEND LIBSYMSEEK_SOURCEFILES
-            src/ImageParsers/windows/PENativeParser.h
-            src/ImageParsers/windows/PENativeParser.cpp
-            src/ImageParsers/windows/LIBNativeParser.h
-            src/ImageParsers/windows/LIBNativeParser.cpp
-            src/ImageParsers/windows/COFFNativeParser.h
-            src/ImageParsers/windows/COFFNativeParser.cpp
-            src/ImageParsers/windows/WinHelpers.h
-            src/ImageParsers/windows/WinHelpers.cpp
-    )
+    list(
+        APPEND 
+            LIBSYMSEEK_SOURCEFILES
+        src/ImageParsers/windows/PENativeParser.h
+        src/ImageParsers/windows/PENativeParser.cpp
+        src/ImageParsers/windows/LIBNativeParser.h
+        src/ImageParsers/windows/LIBNativeParser.cpp
+        src/ImageParsers/windows/COFFNativeParser.h
+        src/ImageParsers/windows/COFFNativeParser.cpp
+        src/ImageParsers/windows/WinHelpers.h
+        src/ImageParsers/windows/WinHelpers.cpp
+
+        src/MappedFile/windows/MappedFile.h
+        src/MappedFile/windows/MappedFile.cpp
+        )
 endif()
 
 if(UNIX AND NOT APPLE)
-    list(APPEND LIBSYMSEEK_SOURCEFILES
-            src/ImageParsers/linux/ELFNativeParser.h
-            src/ImageParsers/linux/ELFNativeParser.cpp
-    )
+    list(
+        APPEND 
+            LIBSYMSEEK_SOURCEFILES
+        src/ImageParsers/linux/ELFNativeParser.h
+        src/ImageParsers/linux/ELFNativeParser.cpp
+        )
 endif()
 
 add_library(symseek ${LIBSYMSEEK_SOURCEFILES})
 target_include_directories(symseek PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src)
-target_link_libraries(symseek Qt5::Core)
+target_compile_features(symseek PUBLIC cxx_std_20)
 
 if(WIN32)
     find_library(DBGHELP_LIB NAMES Dbghelp)
@@ -51,6 +60,15 @@ if(WIN32)
     if(PSAPI_LIB)
         target_link_libraries(symseek ${PSAPI_LIB})
         target_compile_definitions(symseek PRIVATE PSAPI_FOUND)
+    endif()
+
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        get_target_property(FLAGS symseek COMPILE_FLAGS)
+        if(FLAGS STREQUAL "FLAGS-NOTFOUND")
+            set(FLAGS "")
+        endif()
+        set(FLAGS ${FLAGS} /await)
+        set_target_properties(symseek PROPERTIES COMPILE_FLAGS "${FLAGS}")
     endif()
 endif()
 

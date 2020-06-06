@@ -14,21 +14,24 @@ namespace Ui
 }
 QT_END_NAMESPACE
 
-class MainWindow: public QMainWindow
+namespace SymSeek::QtUI
 {
-    Q_OBJECT
+    class MainWindow: public QMainWindow
+    {
+        Q_OBJECT
 
-public:
-    MainWindow(QWidget * parent = nullptr);
-    ~MainWindow();
+    public:
+        MainWindow(QWidget * parent = nullptr);
+        ~MainWindow();
 
-private:
-    void loadSettings();
-    void storeSettings() const;
+    private:
+        void loadSettings();
+        void storeSettings() const;
 
-    int addWorkspace();
-    void disposeTab(int index);
+        int addWorkspace();
+        void disposeTab(int index);
 
-private:
-    std::unique_ptr<Ui::MainWindow> m_ui;
-};
+    private:
+        std::unique_ptr<Ui::MainWindow> m_ui;
+    };
+}

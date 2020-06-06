@@ -1,40 +1,40 @@
 #pragma once
 
 // Even though the parser doesn't rely on WinAPI, it is using the win-specific demangler ;(
-#include <QtCore/QtGlobal>
-#if !defined(Q_OS_WIN)
+#include <symseek/Definitions.h>
+
+#if !SYMSEEK_OS_WIN()
 #   error Unsupported platform
 #endif
 
 #include <memory>
 
-#include <QtCore/QFile>
+#include <symseek/IImageParser.h>
 
-#include "src/ImageParsers/IImageParser.h"
+#include "src/MappedFile/IMappedFile.h"
 
 namespace SymSeek
 {
     class LIBNativeParser : public IImageParser
     {
     public:
-        ISymbolReader::UPtr reader(QString imagePath) const override;
+        ISymbolReader::UPtr reader(String const & imagePath) const override;
     };
 
     class LIBNativeSymbolReader : public ISymbolReader
     {
     public:
-        LIBNativeSymbolReader(std::unique_ptr<QFile> archiveFile);
+        LIBNativeSymbolReader(std::unique_ptr<detail::IMappedFile> archiveFile);
 
         size_t symbolsCount() const override;
 
-        void readInto(SymbolsInserter outputIter, SymbolHandler handler) const override;
+        SymbolsGen readSymbols() const override;
 
     private:
         void readSymbolsCount();
 
     private:
-        // QFile is not movable :(
-        std::unique_ptr<QFile> m_archiveFile;
+        std::unique_ptr<detail::IMappedFile> m_archiveFile;
         uint32_t m_symbolsCount{};
     };
 }

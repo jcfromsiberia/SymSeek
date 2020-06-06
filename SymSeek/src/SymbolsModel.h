@@ -4,7 +4,10 @@
 #include <QtCore/QVector>
 #include <QtCore/QStringList>
 
-#include <symseek/symseek.h>
+#include "SymbolSeeker.h"
+
+namespace SymSeek::QtUI
+{
 
 class SymbolsModel: public QAbstractTableModel
 {
@@ -18,7 +21,7 @@ public:
     QVariant headerData(int section, Qt::Orientation orientation,
                         int role = Qt::DisplayRole) const override;
 
-    void setSymbols(QVector<SymSeek::SymbolsInBinary> symbols);
+    void setSymbols(QVector<SymbolsInBinary> symbols);
 
 private:
     // Preventing extra memory consumption
@@ -30,3 +33,5 @@ private:
     QVector<BinaryToSymbol> m_binariesToSymbols;
     QStringList m_binaries;
 };
+
+}
