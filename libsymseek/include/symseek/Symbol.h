@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -22,9 +23,16 @@ namespace SymSeek
         Variable
     };
 
-    // TODO Squeeze this struct
+    // TODO Squeeze these structs
+    struct RawSymbol
+    {
+        std::string name;
+        bool implements = true;   // Implements or Imports?
+    };
+
     struct Symbol
     {
+        RawSymbol raw;
         NameType type = NameType::Function;
         Access access = Access::Public;  // When type == Method
         enum Modifiers
@@ -36,8 +44,6 @@ namespace SymSeek
             IsStatic   = 0b1000,  // When type == Method
         };  //:3 bit field?
         int modifiers = None;
-        bool implements = true;   // Implements or Imports?
-        String mangledName;
-        String demangledName;
+        std::optional<std::string> demangledName;
     };
 }

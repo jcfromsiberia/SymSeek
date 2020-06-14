@@ -32,15 +32,15 @@ QVariant SymbolsModel::data(QModelIndex const & index, int role) const
 
     auto const & [binRef, sym] = m_binariesToSymbols[row];
 
-    switch(col)
+    switch (col)
     {
         case 0:
             {
-                if(role == Qt::ToolTipRole)
+                if (role == Qt::ToolTipRole)
                 {
                     return *binRef.string();
                 }
-                else if(role == Qt::DisplayRole)
+                else if (role == Qt::DisplayRole)
                 {
                     QString path = *binRef.string();
                     int index = binRef.lastIndexOf('/');
@@ -52,21 +52,23 @@ QVariant SymbolsModel::data(QModelIndex const & index, int role) const
             break;
         case 1:
         {
-            if(role == Qt::DisplayRole)
+            if (role == Qt::DisplayRole)
             {
-                return sym.implements ? "EXP" : "IMP";  // TODO Replace with fancy icons!
+                return sym.raw.implements ? "EXP" : "IMP";  // TODO Replace with fancy icons!
             }
         }
             break;
         case 2:
             {
-                if(role == Qt::DisplayRole)
-                    return sym.mangledName == sym.demangledName ? "C" : "C++";
+                if (role == Qt::DisplayRole)
+                {
+                    return sym.demangledName ? "C++" : "C";
+                }
             }
             break;
         case 3:
             {
-                if(role == Qt::DecorationRole) {
+                if (role == Qt::DecorationRole) {
                     switch (sym.access)
                     {
                         case Access::Public:
@@ -77,7 +79,7 @@ QVariant SymbolsModel::data(QModelIndex const & index, int role) const
                             return QColor{ "firebrick" };
                     };
                 }
-                if(role == Qt::DisplayRole)
+                if (role == Qt::DisplayRole)
                 {
                     QString text;
                     if(sym.modifiers & Symbol::IsStatic)
@@ -107,12 +109,12 @@ QVariant SymbolsModel::data(QModelIndex const & index, int role) const
             {
                 if (role == Qt::DisplayRole)
                 {
-                    return toQString(sym.demangledName);
+                    return toQString(sym.demangledName ? sym.demangledName.value() : sym.raw.name);
                 }
 
                 if (role == Qt::ToolTipRole)
                 {
-                    return toQString(sym.mangledName);
+                    return toQString(sym.raw.name);
                 }
             }
             break;
@@ -128,10 +130,10 @@ void SymbolsModel::setSymbols(QVector<SymbolsInBinary> symbolsInBinaries)
     m_binaries.clear();
     m_binariesToSymbols.clear();
     m_binaries.reserve(symbolsInBinaries.size());
-    for(auto const & symsInBin: symbolsInBinaries)
+    for (auto const & symsInBin: symbolsInBinaries)
     {
         m_binaries.push_back(symsInBin.binaryPath);
-        QStringRef binRef { &m_binaries.last() };
+        QStringRef binRef{ &m_binaries.last() };
         for(auto const & symbol: symsInBin.symbols)
         {
             m_binariesToSymbols.push_back({ binRef, symbol });
@@ -142,15 +144,15 @@ void SymbolsModel::setSymbols(QVector<SymbolsInBinary> symbolsInBinaries)
 
 QVariant SymbolsModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
-    if(orientation == Qt::Horizontal)
+    if (orientation == Qt::Horizontal)
     {
-        if(role == Qt::DisplayRole)
+        if (role == Qt::DisplayRole)
         {
             static QStringList const labels = {"IMG", "DIR", "LNG", "EXT", "SYMBOL"};
             Q_ASSERT(section < labels.size());
             return labels[section];
         }
-        else if(role == Qt::ToolTipRole)
+        else if (role == Qt::ToolTipRole)
         {
             static QStringList const labels = {"Image", "Directory(Import/Export)",
                                                "Language", "Extra modifiers", "Symbol name"};
