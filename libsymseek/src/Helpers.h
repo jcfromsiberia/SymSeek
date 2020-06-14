@@ -8,6 +8,10 @@
 
 #include <MappedFile/IMappedFile.h>
 
+#if SYMSEEK_OS_WIN()
+#   include "Helpers/windows/WinHelpers.h"
+#endif
+
 namespace SymSeek::detail
 {
     [[nodiscard]] std::unique_ptr<IMappedFile> createMappedFile(String const & filePath);

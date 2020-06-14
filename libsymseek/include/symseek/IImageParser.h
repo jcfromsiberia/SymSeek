@@ -15,7 +15,8 @@ namespace SymSeek
     {
     public:
         using UPtr = std::unique_ptr<ISymbolReader>;
-        using SymbolsGen = std::experimental::generator<Symbol>;
+
+        using SymbolsGen = std::experimental::generator<RawSymbol>;
 
         virtual size_t symbolsCount() const = 0;  // for reserving enough space
         virtual SymbolsGen readSymbols() const = 0;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 
 #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
@@ -29,4 +30,10 @@ namespace SymSeek
 #else
     using String = std::string;
 #endif
+
+    enum class Mangler: uint8_t
+    {
+        MSVC = 0,
+        GCC
+    };
 }

@@ -8,8 +8,6 @@
 #include <Debug.h>
 #include <Helpers.h>
 
-#include "WinHelpers.h"
-
 using namespace SymSeek;
 
 template<WORD Machine>
@@ -141,7 +139,7 @@ namespace SymSeek::detail
                 {
                     LPCCH mangledName = GUARD(map<char const *>(names[i]));
                     
-                    co_yield detail::nameToSymbol(mangledName);
+                    co_yield RawSymbol{.name = mangledName};
                 }
             }
 
@@ -155,12 +153,11 @@ namespace SymSeek::detail
                     for (ThunkDataPtr namesTable = map<ThunkDataPtr>(imp->OriginalFirstThunk);
                          namesTable->u1.Function; ++namesTable)
                     {
-                        Symbol symbol;
                         if (namesTable->u1.Ordinal & ImageOrdinalFlag)
                         {
                             String name = detail::toString(importedModuleName) + TEXT("/#") + 
                                 detail::toString(namesTable->u1.Ordinal ^ ImageOrdinalFlag);
-                            symbol.mangledName = symbol.demangledName = std::move(name);
+                            co_yield RawSymbol{.name = std::move(name), .implements = false};
                         }
                         else
                         {
@@ -168,11 +165,8 @@ namespace SymSeek::detail
                                     namesTable->u1.AddressOfData);
                             LPCCH mangledName = reinterpret_cast<LPCCH>(importByName->Name);
                             // Avoiding extra copy of the Symbol instance
-                            co_yield detail::nameToSymbol(mangledName);
-                            continue;
+                            co_yield RawSymbol{.name = mangledName};
                         }
-                        symbol.implements = false;
-                        co_yield std::move(symbol);
                     }
                     imp++;
                 }

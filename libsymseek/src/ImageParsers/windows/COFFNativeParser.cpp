@@ -3,8 +3,6 @@
 #include <Debug.h>
 #include <Helpers.h>
 
-#include "WinHelpers.h"
-
 using namespace SymSeek;
 using SymSeek::detail::IMappedFile;
 
@@ -82,17 +80,14 @@ namespace
                 if (undefined)
                 {
                     // Check if the name starts with __imp_ and remove this prefix
-                    // Ugly, but optimal, no need to call strlen nor create a QString/std::string
-                    if(rawSymbolName[0] == '_' && rawSymbolName[1] == '_' && rawSymbolName[2] == 'i' &&
-                       rawSymbolName[3] == 'm' && rawSymbolName[4] == 'p' && rawSymbolName[5] == '_')
+                    // Ugly, but optimal, no need to call strlen nor create a std::string
+                    if(!std::memcmp(rawSymbolName, "__imp_", 6))
+                    {
                         rawSymbolName += 6;
+                    }
                 }
 
-                Symbol symbol = detail::nameToSymbol(rawSymbolName);
-
-                symbol.implements = !undefined;
-
-                co_yield std::move(symbol);
+                co_yield RawSymbol{.name = rawSymbolName, .implements = !undefined};
             }
         }
 

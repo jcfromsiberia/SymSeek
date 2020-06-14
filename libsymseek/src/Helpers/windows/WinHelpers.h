@@ -14,17 +14,13 @@
 
 namespace SymSeek::detail
 {
-    Symbol nameToSymbol(LPCCH mangledName);
-
-    // No if constexpr as it merely doesn't work https://godbolt.org/z/LLDFQ-
-    
     template<typename T = String>
     T toString(LPCCH str)
     {
         if constexpr(std::is_same_v<typename T::value_type, wchar_t>)
         {
             size_t const length = std::strlen(str);
-            T result(length, 0);  // cl 19.26.28806 doesn't compile with uniform initialization {}
+            T result(length, 0);
 
             ::MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, str, 
                 /*cbMultiByte=*/-1, result.data(), static_cast<int>(length));
@@ -35,4 +31,6 @@ namespace SymSeek::detail
             return str;
         }
     }
+
+    LPVOID findNameInRuntime(LPCTSTR pattern, LPCTSTR dllName, LPCSTR name);
 }

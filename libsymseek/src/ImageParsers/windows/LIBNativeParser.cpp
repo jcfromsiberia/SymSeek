@@ -3,10 +3,7 @@
 #include <algorithm>
 
 #include <Debug.h>
-
 #include <Helpers.h>
-
-#include "WinHelpers.h"
 
 using namespace SymSeek;
 
@@ -57,9 +54,7 @@ LIBNativeSymbolReader::SymbolsGen LIBNativeSymbolReader::readSymbols() const
         i < m_symbolsCount;
         ++i, symTable += strlen(symTable) + /*terminator \0*/1)
     {
-        Symbol symbol = detail::nameToSymbol(symTable);
-
-        co_yield std::move(symbol);
+        co_yield RawSymbol{.name = symTable};
     }
     m_archiveFile->unmap();
 }

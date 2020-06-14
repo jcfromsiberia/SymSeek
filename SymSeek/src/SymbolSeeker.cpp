@@ -40,11 +40,21 @@ QVector<SymbolsInBinary> SymbolSeeker::findSymbols(
     result.reserve(int(itemsCount));
     Q_EMIT startProcessingItems(itemsCount);
 
+#ifdef Q_OS_WIN
+    static IDemangler::UPtr const demanglers[] = 
+    {
+        createDemangler(Mangler::MSVC),
+        createDemangler(Mangler::GCC)
+    };
+#else
+#   error Not implemented
+#endif
+
     // Could be run in parallel
     for (auto const & binary: binaries)
     {
         qApp->processEvents();
-        if(m_interruptFlag)
+        if (m_interruptFlag)
         {
             m_interruptFlag = false;
             Q_EMIT interrupted();
@@ -58,14 +68,28 @@ QVector<SymbolsInBinary> SymbolSeeker::findSymbols(
             Symbols symbols;
             symbols.reserve(int(reader->symbolsCount()));
             // Payload
-            for (auto && symbol: reader->readSymbols())
+            for (auto && rawSymbol: reader->readSymbols())
             {
+                std::optional<std::string> demangledName;
+                for (auto const & demangler: demanglers)
+                {
+                    if (auto nameOpt = demangler->demangleName(rawSymbol.name.c_str()); nameOpt)
+                    {
+                        demangledName = nameOpt;
+                        break;
+                    }
+                }
+
+                Symbol symbol = demangledName.has_value() ? 
+                                createSymbol(std::move(rawSymbol), demangledName.value()) :
+                                Symbol{.raw = std::move(rawSymbol)};
+
                 SymbolHandlerAction action = handler(symbol);
-                if(action == SymbolHandlerAction::Skip)
+                if (action == SymbolHandlerAction::Skip)
                 {
                     continue;
                 }
-                else if(action == SymbolHandlerAction::Stop)
+                else if (action == SymbolHandlerAction::Stop)
                 {
                     break;
                 }

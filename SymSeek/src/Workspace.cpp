@@ -172,15 +172,18 @@ void Workspace::doSearch()
     QRegExp symbolRx{ symbolName };
     
     AsyncSeeker asyncSeeker { 
-        directory, masks, [symbolName, isRegex, &symbolRx](Symbol const & symbol) 
+        directory, masks, 
+        [symbolName, isRegex, &symbolRx](Symbol const & symbol) 
         {
-        QString demangledName = toQString(symbol.demangledName);
+            QString demangledName = toQString(
+                symbol.demangledName ? symbol.demangledName.value() : symbol.raw.name);
 
-        return (isRegex ? symbolRx.indexIn(demangledName) > -1 : 
-                demangledName.contains(symbolName))
-               ? SymbolHandlerAction::Add
-               : SymbolHandlerAction::Skip;
-    } };
+            return (isRegex ? symbolRx.indexIn(demangledName) > -1 : 
+                    demangledName.contains(symbolName))
+                   ? SymbolHandlerAction::Add
+                   : SymbolHandlerAction::Skip;
+        } 
+    };
 
     auto seeker = asyncSeeker.seeker();
 

@@ -8,6 +8,7 @@ list(
         LIBSYMSEEK_SOURCEFILES
     include/symseek/symseek.h
     include/symseek/Definitions.h
+    include/symseek/IDemangler.h
     include/symseek/IImageParser.h
     include/symseek/Symbol.h
 
@@ -23,14 +24,20 @@ if(WIN32)
     list(
         APPEND 
             LIBSYMSEEK_SOURCEFILES
+        src/Demanglers/windows/MSVCDemangler.h
+        src/Demanglers/windows/MSVCDemangler.cpp
+        src/Demanglers/windows/GCCDemangler.h
+        src/Demanglers/windows/GCCDemangler.cpp
+
         src/ImageParsers/windows/PENativeParser.h
         src/ImageParsers/windows/PENativeParser.cpp
         src/ImageParsers/windows/LIBNativeParser.h
         src/ImageParsers/windows/LIBNativeParser.cpp
         src/ImageParsers/windows/COFFNativeParser.h
         src/ImageParsers/windows/COFFNativeParser.cpp
-        src/ImageParsers/windows/WinHelpers.h
-        src/ImageParsers/windows/WinHelpers.cpp
+
+        src/Helpers/windows/WinHelpers.h
+        src/Helpers/windows/WinHelpers.cpp
 
         src/MappedFile/windows/MappedFile.h
         src/MappedFile/windows/MappedFile.cpp
