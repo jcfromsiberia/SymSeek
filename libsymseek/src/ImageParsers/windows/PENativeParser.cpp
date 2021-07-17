@@ -155,8 +155,8 @@ namespace SymSeek::detail
                     {
                         if (namesTable->u1.Ordinal & ImageOrdinalFlag)
                         {
-                            String name = detail::toString(importedModuleName) + TEXT("/#") + 
-                                detail::toString(namesTable->u1.Ordinal ^ ImageOrdinalFlag);
+                            std::string name = detail::toString<std::string>(importedModuleName) + "/#" + 
+                                detail::toString<ULONGLONG, std::string>(namesTable->u1.Ordinal ^ ImageOrdinalFlag);
                             co_yield RawSymbol{.name = std::move(name), .implements = false};
                         }
                         else

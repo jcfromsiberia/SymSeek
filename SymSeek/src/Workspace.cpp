@@ -89,7 +89,7 @@ Workspace::Workspace(QWidget *parent)
             }, this };
     m_regexValidator = new CallbackValidator{
             [](QString const & pattern) {
-                return QRegExp{ pattern }.isValid();
+                return QRegularExpression{ pattern }.isValid();
             }
     };
     m_ui->leDirectory->setValidator(m_directoryValidator);
@@ -115,7 +115,7 @@ Workspace::Workspace(QWidget *parent)
         QFileDialog dialog;
         dialog.setDirectory(currentPath);
         dialog.setWindowTitle("Open Directory");
-        dialog.setFileMode(QFileDialog::DirectoryOnly);
+        dialog.setFileMode(QFileDialog::Directory);
         dialog.setOption(QFileDialog::DontUseNativeDialog, true);
         dialog.setOption(QFileDialog::ShowDirsOnly, false);
         if(dialog.exec() == QDialog::Rejected)
@@ -169,7 +169,7 @@ void Workspace::doSearch()
 #endif
     );
 
-    QRegExp symbolRx{ symbolName };
+    QRegularExpression symbolRx{ symbolName };
     
     AsyncSeeker asyncSeeker { 
         directory, masks, 
@@ -178,7 +178,7 @@ void Workspace::doSearch()
             QString demangledName = toQString(
                 symbol.demangledName ? symbol.demangledName.value() : symbol.raw.name);
 
-            return (isRegex ? symbolRx.indexIn(demangledName) > -1 : 
+            return (isRegex ? symbolRx.match(demangledName).isValid() : 
                     demangledName.contains(symbolName))
                    ? SymbolHandlerAction::Add
                    : SymbolHandlerAction::Skip;

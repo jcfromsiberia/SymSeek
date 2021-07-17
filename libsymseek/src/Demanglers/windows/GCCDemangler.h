@@ -9,6 +9,6 @@ namespace SymSeek
     public:
         GCCDemangler();
 
-        std::optional<String> demangleName(char const * name) const override;
+        std::optional<std::string> demangleName(char const * name) const override;
     };
 }

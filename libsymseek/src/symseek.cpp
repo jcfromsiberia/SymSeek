@@ -69,7 +69,7 @@ namespace SymSeek
         {
             result.type = NameType::Method;
             result.access = Access::Public;
-            String const & accessStr = match[1];
+            std::string const & accessStr = match[1];
 
             if (accessStr == "protected")
             {
@@ -87,7 +87,7 @@ namespace SymSeek
             R"(^(virtual|static).+)", std::regex::optimize};
         if (std::smatch match; std::regex_match(name, match, modifierRx))
         {
-            String const & modifier = match[1];
+            std::string const & modifier = match[1];
             if (modifier == "static")
             {
                 result.modifiers |= Symbol::IsStatic;

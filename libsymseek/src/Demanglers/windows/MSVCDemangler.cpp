@@ -63,7 +63,7 @@ MSVCDemangler::MSVCDemangler()
 #else
         undecorateName = reinterpret_cast<UnDecorateSymbolNamePtr>(
             detail::findNameInRuntime(
-                TEXT(R"(^dbghelp\.dll$)"), TEXT("dbghelp.dll"), "UnDecorateSymbolName")));
+                TEXT(R"(^dbghelp\.dll$)"), TEXT("dbghelp.dll"), "UnDecorateSymbolName"));
 #endif
     };
 

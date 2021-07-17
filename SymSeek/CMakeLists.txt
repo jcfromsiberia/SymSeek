@@ -5,7 +5,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-find_package(Qt5Widgets CONFIG REQUIRED)
+find_package(Qt6Widgets CONFIG REQUIRED)
 
 list(
     APPEND
@@ -29,20 +29,20 @@ list(
     src/main.cpp
 )
 
-add_executable(SymSeek ${SYMSEEK_SOURCEFILES})
+add_executable(SymSeekUI ${SYMSEEK_SOURCEFILES})
 
 add_subdirectory(../libsymseek libsymseek)
 
-target_link_libraries(SymSeek Qt5::Widgets symseek)
-target_compile_features(SymSeek PUBLIC cxx_std_20)
+target_link_libraries(SymSeekUI Qt6::Widgets symseek)
+target_compile_features(SymSeekUI PUBLIC cxx_std_20)
 
 if(WIN32)
     if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        get_target_property(FLAGS SymSeek COMPILE_FLAGS)
+        get_target_property(FLAGS SymSeekUI COMPILE_FLAGS)
         if(FLAGS STREQUAL "FLAGS-NOTFOUND")
             set(FLAGS "")
         endif()
         set(FLAGS ${FLAGS} /await)
-        set_target_properties(SymSeek PROPERTIES COMPILE_FLAGS "${FLAGS}")
+        set_target_properties(SymSeekUI PROPERTIES COMPILE_FLAGS "${FLAGS}")
     endif()
 endif()

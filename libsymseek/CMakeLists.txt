@@ -76,6 +76,7 @@ if(WIN32)
         endif()
         set(FLAGS ${FLAGS} /await)
         set_target_properties(symseek PROPERTIES COMPILE_FLAGS "${FLAGS}")
+        target_compile_definitions(symseek PUBLIC UNICODE)
     endif()
 endif()
 

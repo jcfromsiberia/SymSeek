@@ -27,7 +27,7 @@ private:
     // Preventing extra memory consumption
     struct BinaryToSymbol
     {
-        QStringRef binaryRef{};
+        QStringView binaryRef{};
         SymSeek::Symbol symbol;
     };
     QVector<BinaryToSymbol> m_binariesToSymbols;

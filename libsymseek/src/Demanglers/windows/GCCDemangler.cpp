@@ -61,7 +61,7 @@ GCCDemangler::GCCDemangler()
     std::call_once(funcInitFlag, initDemangleFunction);
 }
 
-std::optional<String> GCCDemangler::demangleName(char const * name) const
+std::optional<std::string> GCCDemangler::demangleName(char const * name) const
 {
     if (!name || std::memcmp(name, "_Z", 2))
     {

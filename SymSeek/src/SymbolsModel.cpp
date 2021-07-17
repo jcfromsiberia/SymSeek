@@ -38,11 +38,11 @@ QVariant SymbolsModel::data(QModelIndex const & index, int role) const
             {
                 if (role == Qt::ToolTipRole)
                 {
-                    return *binRef.string();
+                    return binRef.toString();
                 }
                 else if (role == Qt::DisplayRole)
                 {
-                    QString path = *binRef.string();
+                    QString path = binRef.toString();
                     int index = binRef.lastIndexOf('/');
                     if(index > -1)
                         return path.right(path.size() - index - 1);
@@ -133,7 +133,7 @@ void SymbolsModel::setSymbols(QVector<SymbolsInBinary> symbolsInBinaries)
     for (auto const & symsInBin: symbolsInBinaries)
     {
         m_binaries.push_back(symsInBin.binaryPath);
-        QStringRef binRef{ &m_binaries.last() };
+        QStringView binRef{ m_binaries.last() };
         for(auto const & symbol: symsInBin.symbols)
         {
             m_binariesToSymbols.push_back({ binRef, symbol });
