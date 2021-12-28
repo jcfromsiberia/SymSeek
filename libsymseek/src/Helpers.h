@@ -16,8 +16,11 @@ namespace SymSeek::detail
 {
     [[nodiscard]] std::unique_ptr<IMappedFile> createMappedFile(String const & filePath);
 
-    template<typename T, typename Return = String>
-    [[nodiscard]] Return toString(T value) requires std::is_fundamental_v<T>
+    template <class T>
+    concept Fundamental = std::is_fundamental_v<T>;
+
+    template<typename Return = String>
+    [[nodiscard]] Return toString(Fundamental auto value)
     {
         if constexpr(std::is_same_v<typename Return::value_type, wchar_t>)
         {
