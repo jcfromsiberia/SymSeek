@@ -1,7 +1,36 @@
-#include "COFFNativeParser.h"
+module;
+
+// Even though the parser doesn't rely on WinAPI, it is using the win-specific demangler ;(
+#include <symseek/Definitions.h>
+
+#if !SYMSEEK_OS_WIN()
+#   error Unsupported platform
+#endif
+
+#include <Windows.h>
 
 #include <Debug.h>
-#include <Helpers.h>
+
+export module symseek:parsers.coff;
+
+import <memory>;
+
+import symseek.definitions;
+import symseek.interfaces.parser;
+
+import symseek.internal.interfaces.mappedfile;
+import symseek.internal.helpers;
+
+export namespace SymSeek
+{
+    class COFFNativeParser : public IImageParser
+    {
+    public:
+        ISymbolReader::UPtr reader(String const& imagePath) const override;
+    };
+}
+
+// Implementation
 
 using namespace SymSeek;
 using SymSeek::detail::IMappedFile;
@@ -97,7 +126,6 @@ namespace
         uint8_t const * m_symTable{};
     };
 }
-
 
 ISymbolReader::UPtr COFFNativeParser::reader(String const & imagePath) const
 {

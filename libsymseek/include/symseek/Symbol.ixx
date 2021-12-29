@@ -1,13 +1,15 @@
-#pragma once
+module;
 
-#include <functional>
-#include <optional>
-#include <string>
-#include <vector>
+#include <symseek/Definitions.h>
 
-#include "Definitions.h"
+export module symseek.symbol;
 
-namespace SymSeek
+import <functional>;
+import <optional>;
+import <string>;
+import <vector>;
+
+export namespace SymSeek
 {
     enum class Access: uint8_t
     {

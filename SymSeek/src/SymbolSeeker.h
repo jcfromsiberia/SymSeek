@@ -2,7 +2,7 @@
 
 #include <QtCore/QObject>
 
-#include <symseek/Symbol.h>
+import symseek.symbol;
 
 namespace SymSeek::QtUI
 {

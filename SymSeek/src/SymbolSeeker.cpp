@@ -1,12 +1,12 @@
 #include <src/SymbolSeeker.h>
 
-#include <iterator>
+import <iterator>;
 
 #include <QtCore/QCoreApplication>   // for qApp->processEvents()
 #include <QtCore/QDirIterator>
 #include <QtCore/QDebug>
 
-#include <symseek/symseek.h>
+import symseek;
 
 using namespace SymSeek;
 using namespace SymSeek::QtUI;

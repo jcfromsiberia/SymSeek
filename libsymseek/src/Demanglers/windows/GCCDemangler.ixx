@@ -1,9 +1,26 @@
-#include "GCCDemangler.h"
+module;
 
-#include <mutex>
 #include <Windows.h>
 
-#include <Helpers.h>
+export module symseek:demanglers.gcc;
+
+import <mutex>;
+
+import symseek.interfaces.demangler;
+import symseek.internal.helpers;
+
+export namespace SymSeek
+{
+    class GCCDemangler : public IDemangler
+    {
+    public:
+        GCCDemangler();
+
+        std::optional<std::string> demangleName(char const* name) const override;
+    };
+}
+
+// Implementation
 
 using namespace SymSeek;
 

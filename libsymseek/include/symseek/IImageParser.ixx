@@ -1,15 +1,19 @@
-#pragma once
+module;
 
-#include <experimental/generator>
-#include <functional>
-#include <iterator>
-#include <memory>
-#include <string>
+#include <symseek/Definitions.h>
 
-#include "Definitions.h"
-#include "Symbol.h"
+export module symseek.interfaces.parser;
 
-namespace SymSeek
+import <experimental/generator>;
+import <functional>;
+import <iterator>;
+import <memory>;
+import <string>;
+
+import symseek.definitions;
+import symseek.symbol;
+
+export namespace SymSeek
 {
     class ISymbolReader
     {

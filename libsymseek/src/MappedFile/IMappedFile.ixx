@@ -1,11 +1,12 @@
-#pragma once
-
-#include <cstdint>
-#include <memory>
+module;
 
 #include <symseek/Definitions.h>
 
-namespace SymSeek::detail
+export module symseek.internal.interfaces.mappedfile;
+
+import symseek.definitions;
+
+export namespace SymSeek::detail
 {
     class IMappedFile
     {

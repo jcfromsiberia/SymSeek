@@ -1,6 +1,6 @@
 #pragma once
 
-#include <memory>
+import <memory>;
 
 #include <QtCore/QPointer>
 #include <QtWidgets/QMainWindow>
