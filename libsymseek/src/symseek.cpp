@@ -1,16 +1,22 @@
-#include <symseek/symseek.h>
+module;
 
-#include <regex>
+#include <symseek/Definitions.h>
+
+#if SYMSEEK_OS_LIN()
+#   include "ImageParsers/linux/ELFNativeParser.h"
+#endif
+
+module symseek;
+
+import <regex>;
 
 #if SYMSEEK_OS_WIN()
-#   include "src/Demanglers/windows/GCCDemangler.h"
-#   include "src/Demanglers/windows/MSVCDemangler.h" 
+    import :parsers.coff;
+    import :parsers.lib;
+    import :parsers.pe;
 
-#   include "src/ImageParsers/windows/COFFNativeParser.h"
-#   include "src/ImageParsers/windows/LIBNativeParser.h"
-#   include "src/ImageParsers/windows/PENativeParser.h"
-#elif SYMSEEK_OS_LIN()
-#   include "ImageParsers/linux/ELFNativeParser.h"
+    import :demanglers.gcc;
+    import :demanglers.msvc;
 #endif
 
 namespace SymSeek

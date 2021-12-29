@@ -1,6 +1,5 @@
-#include "MSVCDemangler.h"
+module;
 
-#include <mutex>
 #include <Windows.h>
 
 #if defined(DBGHELP_FOUND)
@@ -11,7 +10,25 @@
 #   include <psapi.h>
 #endif
 
-#include <Helpers.h>
+export module symseek:demanglers.msvc;
+
+import <mutex>;
+
+import symseek.interfaces.demangler;
+import symseek.internal.helpers;
+
+export namespace SymSeek
+{
+    class MSVCDemangler : public IDemangler
+    {
+    public:
+        MSVCDemangler();
+
+        std::optional<std::string> demangleName(char const* name) const override;
+    };
+}
+
+// Implementation
 
 using namespace SymSeek;
 

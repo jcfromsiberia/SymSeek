@@ -1,9 +1,54 @@
-#include "LIBNativeParser.h"
+module;
 
-#include <algorithm>
+// Even though the parser doesn't rely on WinAPI, it is using the win-specific demangler ;(
+#include <symseek/Definitions.h>
+
+#if !SYMSEEK_OS_WIN()
+#   error Unsupported platform
+#endif
+
+#include <Windows.h>
 
 #include <Debug.h>
-#include <Helpers.h>
+
+export module symseek:parsers.lib;
+
+import <algorithm>;
+import <memory>;
+
+import symseek.definitions;
+import symseek.interfaces.parser;
+
+import symseek.internal.interfaces.mappedfile;
+import symseek.internal.helpers;
+
+export namespace SymSeek
+{
+    class LIBNativeParser : public IImageParser
+    {
+    public:
+        ISymbolReader::UPtr reader(String const& imagePath) const override;
+    };
+
+    class LIBNativeSymbolReader : public ISymbolReader
+    {
+    public:
+        LIBNativeSymbolReader(std::unique_ptr<detail::IMappedFile> archiveFile);
+
+        size_t symbolsCount() const override;
+
+        SymbolsGen readSymbols() const override;
+
+    private:
+        void readSymbolsCount();
+
+    private:
+        std::unique_ptr<detail::IMappedFile> m_archiveFile;
+        uint32_t m_symbolsCount{};
+    };
+}
+
+// Implementation
 
 using namespace SymSeek;
 

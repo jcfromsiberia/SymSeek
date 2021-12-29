@@ -1,11 +1,14 @@
-#pragma once
+module;
 
-#include <memory>
-#include <optional>
+#include <symseek/Definitions.h>
 
-#include "Definitions.h"
+export module symseek.interfaces.demangler;
 
-namespace SymSeek
+import <memory>;
+import <optional>;
+import <string>;
+
+export namespace SymSeek
 {
     class IDemangler
     {

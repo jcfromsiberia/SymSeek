@@ -1,16 +1,55 @@
-#include "WinHelpers.h"
+module;
 
-#include <memory>
-#include <regex>
-
-#include <tchar.h>
+#include <Windows.h>
 
 #if defined(PSAPI_FOUND)
 #   include <psapi.h>
 #endif
 
 #include <Debug.h>
-#include <Helpers.h>
+
+#include <tchar.h>
+
+#include <symseek/Definitions.h>
+
+#if !SYMSEEK_OS_WIN()
+#   error Unsupported platform
+#endif
+
+#include <Windows.h>
+
+export module symseek.internal.helpers.win;
+
+import <memory>;
+import <regex>;
+import <type_traits>;
+
+import symseek.definitions;
+
+export namespace SymSeek::detail
+{
+    template<typename T = String>
+    T toString(LPCCH str)
+    {
+        if constexpr (std::is_same_v<typename T::value_type, wchar_t>)
+        {
+            size_t const length = std::strlen(str);
+            T result(length, 0);
+
+            ::MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, str,
+                /*cbMultiByte=*/-1, result.data(), static_cast<int>(length));
+            return result;
+        }
+        else
+        {
+            return str;
+        }
+    }
+
+    LPVOID findNameInRuntime(LPCTSTR pattern, LPCTSTR dllName, LPCSTR name);
+}
+
+// Implementation
 
 template<typename T = typename String::value_type>
 using RegEx = std::basic_regex<T>;
@@ -19,7 +58,6 @@ template<typename T = typename String::const_iterator>
 using RegExMatch = std::match_results<T>;
 
 using SymSeek::String;
-using SymSeek::detail::toString;
 
 namespace SymSeek::detail
 {

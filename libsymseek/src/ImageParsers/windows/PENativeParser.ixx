@@ -1,12 +1,36 @@
-#include "PENativeParser.h"
-
-#include <algorithm>
-#include <type_traits>
+module;
 
 #include <Windows.h>
 
 #include <Debug.h>
-#include <Helpers.h>
+
+#include <symseek/Definitions.h>
+
+#if !SYMSEEK_OS_WIN()
+#   error Unsupported platform
+#endif
+
+export module symseek:parsers.pe;
+
+import <algorithm>;
+import <memory>;
+import <type_traits>;
+
+import symseek.definitions;
+import symseek.interfaces.parser;
+import symseek.internal.interfaces.mappedfile;
+import symseek.internal.helpers;
+
+export namespace SymSeek
+{
+    class PENativeParser : public IImageParser
+    {
+    public:
+        ISymbolReader::UPtr reader(String const& imagePath) const override;
+    };
+}
+
+// Implementation
 
 using namespace SymSeek;
 

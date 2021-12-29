@@ -1,6 +1,6 @@
 #pragma once
 
-#include <memory>
+import <memory>;
 
 #include <QtCore/QPointer>
 #include <QtCore/QSortFilterProxyModel>
@@ -8,9 +8,9 @@
 #include <QtGui/QValidator>
 #include <QtWidgets/QMainWindow>
 
-#include <symseek/symseek.h>
-
 #include "SymbolsModel.h"
+
+import symseek;
 
 QT_BEGIN_NAMESPACE
 namespace Ui

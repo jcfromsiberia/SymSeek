@@ -9,11 +9,11 @@
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QStatusBar>
 
-#include <symseek/symseek.h>
-
 #include <ui_workspace.h>
 
 #include "Debug.h"
+
+import symseek;
 
 using namespace SymSeek::QtUI;
 
